@@ -1,0 +1,287 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  avatar    String?
+  role      String   @default("member")
+  status    String   @default("offline")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignedTasks     Task[]       @relation("AssignedTo")
+  createdTasks      Task[]       @relation("CreatedBy")
+  comments          Comment[]
+  messages          Message[]
+  uploadedFiles     FileItem[]
+  workspaceMembers  WorkspaceMember[]
+  teamMembers       TeamMember[]
+  wikiEdits         WikiPage[]
+  channelMemberships ChannelMember[]
+  meetingMemberships MeetingMember[]
+}
+
+model Workspace {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  color       String   @default("#10b981")
+  icon        String   @default("🏢")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members     WorkspaceMember[]
+  projects    Project[]
+  channels    Channel[]
+  teams       Team[]
+  automations Automation[]
+  files       FileItem[]
+  wikiPages   WikiPage[]
+  activityLogs ActivityLog[]
+}
+
+model WorkspaceMember {
+  id          String   @id @default(cuid())
+  userId      String
+  workspaceId String
+  role        String   @default("member")
+  joinedAt    DateTime @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  color       String   @default("#10b981")
+  icon        String   @default("📋")
+  status      String   @default("active")
+  workspaceId String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  tasks     Task[]
+  meetings  Meeting[]
+
+  @@index([workspaceId])
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  status      String    @default("todo")
+  priority    String    @default("medium")
+  tags        String    @default("")
+  dueDate     DateTime?
+  projectId   String
+  assigneeId  String?
+  creatorId   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee  User?    @relation("AssignedTo", fields: [assigneeId], references: [id], onDelete: SetNull)
+  creator   User?    @relation("CreatedBy", fields: [creatorId], references: [id], onDelete: SetNull)
+  subtasks  Subtask[]
+  comments  Comment[]
+
+  @@index([projectId])
+  @@index([assigneeId])
+}
+
+model Subtask {
+  id        String  @id @default(cuid())
+  title     String
+  completed Boolean @default(false)
+  taskId    String
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  taskId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+}
+
+model Channel {
+  id          String   @id @default(cuid())
+  name        String
+  type        String   @default("team")
+  workspaceId String
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  messages   Message[]
+  channelMembers ChannelMember[]
+
+  @@index([workspaceId])
+}
+
+model ChannelMember {
+  id        String @id @default(cuid())
+  channelId String
+  userId    String
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, userId])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+  channelId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([channelId])
+  @@index([userId])
+}
+
+model Meeting {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  date        DateTime
+  duration    Int       @default(60)
+  status      String    @default("scheduled")
+  link        String?
+  projectId   String?
+  createdAt   DateTime  @default(now())
+
+  project        Project?         @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  meetingMembers MeetingMember[]
+
+  @@index([projectId])
+}
+
+model MeetingMember {
+  id        String @id @default(cuid())
+  meetingId String
+  userId    String
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, userId])
+}
+
+model Team {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  color       String   @default("#10b981")
+  workspaceId String
+  createdAt   DateTime @default(now())
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  teamMembers TeamMember[]
+
+  @@index([workspaceId])
+}
+
+model TeamMember {
+  id     String @id @default(cuid())
+  teamId String
+  userId String
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+}
+
+model Automation {
+  id          String    @id @default(cuid())
+  name        String
+  trigger     String
+  action      String
+  enabled     Boolean   @default(true)
+  lastRun     DateTime?
+  runCount    Int       @default(0)
+  workspaceId String
+  createdAt   DateTime  @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+}
+
+model FileItem {
+  id          String   @id @default(cuid())
+  name        String
+  type        String   @default("other")
+  size        Int      @default(0)
+  url         String
+  projectId   String?
+  workspaceId String
+  uploadedBy  String?
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  uploader  User?     @relation(fields: [uploadedBy], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId])
+}
+
+model WikiPage {
+  id           String   @id @default(cuid())
+  title        String
+  content      String   @default("")
+  icon         String   @default("📄")
+  parentId     String?
+  workspaceId  String
+  lastEditedBy String?
+  updatedAt    DateTime @updatedAt
+  createdAt    DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  editor    User?     @relation(fields: [lastEditedBy], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId])
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  type        String
+  userId      String
+  description String
+  targetId    String?
+  targetType  String?
+  workspaceId String
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([userId])
+}
