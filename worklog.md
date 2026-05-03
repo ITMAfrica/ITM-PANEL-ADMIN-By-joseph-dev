@@ -758,3 +758,427 @@ Stage Summary:
 - Full i18n support for all new text in FR and EN
 - 0 lint errors
 - App compiling and serving successfully on port 3000
+
+---
+
+# Cron Review Round — 2026-05-03 (Session 2)
+
+## Current Project Status
+
+TeamFlow is a fully-featured collaborative project management web app. The app includes 14 views, plus login page, sidebar, top bar, search dialog, notification panel, workspace creation dialog, task detail drawer, create task dialog, keyboard shortcuts dialog, and real-time WebSocket chat.
+
+**Status**: Stable — 0 lint errors, 0 runtime errors, dev server running on :3000
+
+---
+
+## Task ID: 17
+Agent: main (cron review)
+Task: QA assessment, bug fixes, feature additions, styling improvements
+
+Work Log:
+- Read worklog.md to assess current project status
+- Verified lint passes with 0 errors
+- Verified dev server compiles and returns 200
+- QA tested via agent-browser: login, dashboard, tasks, projects, files, wiki, meetings views
+- Found and fixed 2 critical runtime bugs:
+  1. `MessageSquare is not defined` in top-bar.tsx — Turbopack tree-shaking issue with lucide-react barrel import; fixed by using separate import statement
+  2. `TypeError: Cannot read properties of undefined (reading 'slice')` in dashboard-view.tsx — null safety issue with activities, meeting.attendees, and project.members arrays; fixed by adding `|| []` fallback
+- Delegated work to 3 subagents in parallel:
+  - Subagent 16-a: Create Task Dialog + Keyboard Shortcuts System
+  - Subagent 16-b: Page Transitions, Micro-Interactions, Dark Mode Refinements
+  - Subagent 16-c: Wiki Rich Text Editing UI + Files View Enhanced Upload
+
+Stage Summary:
+- 2 critical runtime bugs fixed (MessageSquare import, slice() on undefined)
+- 3 major feature sets added in parallel
+- 0 lint errors, 0 runtime errors after all changes
+- App compiling and serving successfully on port 3000
+
+---
+Task ID: 16-a
+Agent: subagent
+Task: Add Create Task Dialog + Keyboard Shortcuts System
+
+Work Log:
+
+**Create Task Dialog** (`src/components/create-task-dialog.tsx`):
+- Full-featured dialog with gradient header, CheckSquare icon, Sparkles accent
+- Task Title with character count (120 max), red asterisk, animated error state
+- Description with markdown hint
+- Status dropdown with colored dots (todo/in_progress/review/done)
+- Priority dropdown with colored dots and dynamic left border per priority
+- Project dropdown with colored dots from project.color
+- Assignee dropdown with gradient avatar initials + online status dots
+- Due Date picker with Calendar popover
+- Tags as animated pills (comma/Enter to add, X to remove, max 8)
+- Subtasks section with add/remove, animated list, max 10 items
+- Gradient submit button, ghost cancel button, form validation
+- Success toast on creation
+
+**Keyboard Shortcuts Hook** (`src/hooks/use-keyboard-shortcuts.ts`):
+- ⌘K/Ctrl+K: Search
+- ⌘N/Ctrl+N: New task dialog
+- ⌘⇧P/Ctrl+Shift+P: New project dialog
+- ⌘B/Ctrl+B: Toggle sidebar
+- ⌘/ / Ctrl+/: Toggle keyboard shortcuts dialog
+- ⌘1-9 / Ctrl+1-9: Navigate to views
+- Escape: Close any open dialog/panel in priority order
+
+**Keyboard Shortcuts Dialog** (`src/components/keyboard-shortcuts-dialog.tsx`):
+- Gradient header with Keyboard icon
+- 3 shortcut groups (Navigation, Actions, Help)
+- Platform-aware display (⌘ vs Ctrl)
+- Staggered animations, icons per shortcut
+
+Stage Summary:
+- 2 new components created (create-task-dialog, keyboard-shortcuts-dialog)
+- 1 new hook created (use-keyboard-shortcuts)
+- Store extended with keyboardShortcutsOpen state
+- Full i18n support for all new text
+- 0 lint errors
+
+---
+Task ID: 16-b
+Agent: subagent
+Task: Rich Micro-Interactions, Page Transitions, Dark Mode Refinements
+
+Work Log:
+
+**Page Transitions** (`src/components/page-transition.tsx`):
+- Direction-aware AnimatePresence transitions (forward slides left, back slides right)
+- Smooth fade+slide (opacity 0→1, x ±40, y 4→0, duration 0.2s)
+- Content-ready fade-in from 60%→100% opacity after mount
+- Integrated in main-app.tsx
+
+**Enhanced Loading States**:
+- PremiumSkeletonCard with staggered entrance animation (50ms per card)
+- StaggeredSkeleton for list-style loading
+- Top bar API indicator: thin teal progress bar during API loading
+
+**Dark Mode Refinements** (`globals.css`):
+- Improved dark mode text contrast (foreground 0.95→0.96, muted-foreground 0.65→0.68)
+- `dark-card-glow` utility: emerald/teal border glow + shadow on hover
+- Smooth 200ms theme transition on <html> element
+- Dark mode scrollbar: thinner (4px), teal-tinted accent, Firefox support
+- Teal-tinted skeleton shimmer highlight
+
+**Dashboard Polish**:
+- Confetti particle burst animation when completion rate >80%
+- Streak indicator with flame icon showing consecutive activity days
+- Auto-refresh timestamp with green pulse dot
+
+**Calendar Polish**:
+- Drag-to-select date range (highlighted in emerald)
+- Hover tooltips on event dots showing event names
+- Floating "Today" button when scrolled away from current month
+
+**Meetings Polish**:
+- Countdown timer to next meeting (updates every second)
+- "Quick Join" button with enhanced pulse for live meetings
+- Meeting duration progress bar with elapsed percentage
+
+Stage Summary:
+- Page transitions added for all view navigations
+- Dark mode significantly refined with better contrast and effects
+- 3 views polished with new micro-interactions
+- 0 lint errors
+
+---
+Task ID: 16-c
+Agent: subagent
+Task: Wiki Rich Text Editing UI + Files View Enhanced Upload
+
+Work Log:
+
+**Wiki View - Rich Text Editing** (`src/components/views/wiki-view.tsx`):
+- Edit Mode Toggle with animated View/Edit mode switch
+- Formatting Toolbar: 13 buttons (Bold, Italic, Strikethrough, Code, H1-H3, Bullet/Numbered List, Quote, Code Block, Link, Image) with sticky positioning
+- Split-Pane Editor with ResizablePanelGroup (left: editor, right: live preview)
+- Auto-expanding textarea, word/character count, unsaved changes indicator
+- Save (teal) and Discard with confirmation dialog
+- Page Management: context menu (right-click) with Duplicate/Delete, drag handles, dropdown menu
+- Version History tab: timeline with version dots, diff indicators, "Restore this version" button
+
+**Files View - Enhanced Upload & Management** (`src/components/views/files-view.tsx`):
+- Full-page drag-drop overlay with animated dashed border + CloudUpload icon
+- Simulated upload progress with per-file progress bars using setInterval
+- File Preview Panel dialog with metadata grid, image placeholder, Download/Share/Delete buttons, version history
+- Enhanced Grid View: hover zoom on icons, star/favorite toggle, multi-select with checkboxes, bulk actions bar
+- Enhanced List View: sortable columns (Name, Size, Type, Modified, Owner) with asc/desc indicators, row hover actions, star toggle, multi-select
+
+Stage Summary:
+- Wiki view now has full rich text editing UI with split-pane and live preview
+- Files view has drag-drop upload, file preview panel, and multi-select management
+- 76+ new i18n keys added for both FR and EN
+- 0 lint errors
+
+---
+
+## Completed This Round
+
+1. **Bug Fixes**: Fixed MessageSquare import issue (Turbopack tree-shaking) and null safety for .slice() calls in dashboard
+2. **Create Task Dialog**: Full-featured task creation form with priority, status, assignee, due date, tags, subtasks
+3. **Keyboard Shortcuts**: Global shortcut system with ⌘N, ⌘B, ⌘/, ⌘1-9, Escape
+4. **Keyboard Shortcuts Dialog**: Visual reference for all shortcuts
+5. **Page Transitions**: Direction-aware animated transitions between views
+6. **Enhanced Loading States**: Premium skeleton cards, API loading indicator in top bar
+7. **Dark Mode Refinements**: Better contrast, card glow, smooth theme transitions, styled scrollbar
+8. **Dashboard Polish**: Confetti animation, streak indicator, auto-refresh timestamp
+9. **Calendar Polish**: Drag-to-select date range, event dot tooltips, floating Today button
+10. **Meetings Polish**: Countdown timer, Quick Join button, duration progress bar
+11. **Wiki Rich Text Editing**: Formatting toolbar, split-pane editor with live preview, version history
+12. **Files Enhanced Upload**: Drag-drop with progress, file preview panel, multi-select management
+
+## Unresolved Issues / Risks
+
+1. **Turbopack tree-shaking**: Some lucide-react barrel imports may not work correctly with Turbopack HMR. Workaround: use separate import statements for problematic icons.
+2. **Chat service persistence**: Messages stored in memory only, lost on restart.
+3. **Mobile responsive**: Some views may need additional responsive breakpoints testing on actual devices.
+4. **Data persistence**: Most views still use mock data; only dashboard connects to the API.
+
+## Priority Recommendations for Next Phase
+
+1. **Data persistence** — Connect more views (tasks, projects, meetings) to the Prisma database via API routes
+2. **Mobile responsive audit** — Test and fix all views on mobile viewports
+3. **Real-time notifications** — Push new notifications via WebSocket
+4. **File upload backend** — Implement actual file upload with storage
+5. **User profile management** — Edit profile, change avatar, manage settings
+6. **Collaborative editing** — Real-time co-editing for wiki pages
+
+---
+Task ID: 16-a
+Agent: subagent
+Task: Add Create Task Dialog + Keyboard Shortcuts System
+
+Work Log:
+
+**Part 1: Enhanced Create Task Dialog** (`src/components/create-task-dialog.tsx`):
+- Complete rewrite with premium styling and full feature set
+- Gradient header with CheckSquare icon and Sparkles accent
+- Task Title with character count (120 max), red asterisk, error state with animated message
+- Description with markdown hint
+- Status dropdown (new) with colored dots per status
+- Priority dropdown with colored dots
+- Project dropdown with colored dots using project.color
+- Assignee dropdown with avatar initials and online status dots
+- Due Date picker using Calendar popover component
+- Tags as animated pills (comma/Enter to add, X to remove, max 8)
+- Subtasks section (add/remove, animated list, max 10)
+- Colored 3px left border per priority selection
+- Framer Motion animations throughout
+- Gradient submit button, ghost cancel button
+- Icon+label pattern for each form section
+- Teal focus rings on all inputs
+
+**Part 2: Enhanced Keyboard Shortcuts Hook** (`src/hooks/use-keyboard-shortcuts.ts`):
+- ⌘K: Search, ⌘N: New task, ⌘⇧P: New project (preserved)
+- ⌘B: Toggle sidebar (NEW, was ⌘\)
+- ⌘/: Toggle keyboard shortcuts dialog (NEW)
+- ⌘1-9: Navigate to views (NEW, was bare 1-8)
+- Escape: Close any open dialog/panel in priority order (NEW)
+- All shortcuts skip when typing in input fields (except Escape)
+
+**Part 3: Keyboard Shortcuts Dialog** (`src/components/keyboard-shortcuts-dialog.tsx`):
+- New component triggered by ⌘/ shortcut
+- Gradient header with Keyboard icon
+- Three shortcut groups: Navigation (9 items), Actions (5 items), Help (3 items)
+- Icons per shortcut row with hover highlight
+- Platform-aware (⌘ on Mac, Ctrl on others)
+- Staggered entrance animations
+- Footer hint text
+
+**Part 4: Store Updates** (`src/lib/store.ts`):
+- Added keyboardShortcutsOpen boolean state and setter
+
+**Part 5: Integration** (`src/components/main-app.tsx`):
+- Added KeyboardShortcutsDialog import and render
+
+**Part 6: i18n Updates** (`src/lib/i18n/translations.ts`):
+- Added 10 new keys in both FR and EN for createTask and shortcuts sections
+
+Stage Summary:
+- Create Task Dialog completely rewritten with premium design
+- Keyboard shortcuts system enhanced with ⌘/, Escape, ⌘B, ⌘1-9
+- New KeyboardShortcutsDialog component with gradient styling
+- 0 lint errors, app running on port 3000
+
+---
+Task ID: 16-b
+Agent: micro-interactions-agent
+Task: Add Rich Micro-Interactions, Page Transitions, and Dark Mode Refinements
+
+Work Log:
+
+**Part 1: Page Transition Component** (`src/components/page-transition.tsx`):
+- Created reusable `<PageTransition>` component wrapping AnimatePresence
+- Direction-aware transitions: forward navigation slides left, back slides right (based on sidebar page order)
+- Smooth fade+slide transition (opacity 0→1, x ±40, y 4→0, duration 0.2s)
+- Added "content-ready" animation where inner content fades from 60% to 100% opacity after mount
+- Used useEffect + useState instead of ref-based approach to satisfy React hooks lint rules
+- Integrated in main-app.tsx replacing the old inline AnimatePresence + motion.div
+
+**Part 2: Enhanced Loading States**:
+- Created `PremiumSkeletonCard` component with staggered entrance animation (50ms delay per card index)
+- Added premium shimmer overlay (`skeleton-shimmer` CSS class) on skeleton cards
+- Created `StaggeredSkeleton` component for list-style skeleton loading with per-item delay
+- Replaced all dashboard skeleton loading sections (stats, active tasks, activity, meetings, deadlines) with new staggered components
+- Added `isApiLoading` state to Zustand store with `setApiLoading` action
+- Updated `useDashboardData` hook to set `isApiLoading` during API calls
+- Added teal progress bar at top of `<TopBar>` that appears during API loading or search focus (AnimatePresence)
+
+**Part 3: Dark Mode Visual Refinements** (`globals.css`):
+- Improved dark mode contrast: foreground from oklch(0.95) → oklch(0.96), muted-foreground from oklch(0.65) → oklch(0.68)
+- Darker card background in dark mode (oklch(0.17) instead of oklch(0.18)) for better contrast
+- Added `dark-card-glow` utility class: subtle emerald/teal border glow + shadow on hover in dark mode
+- Added smooth 200ms theme transition on `<html>` element for background-color and color
+- Dark mode scrollbar: thinner (4px vs 6px), teal-tinted thumb (oklch(0.35 0.03 160))
+- Added Firefox scrollbar styling for dark mode (`scrollbar-width: thin`)
+- Enhanced dark mode skeleton shimmer with teal-tinted highlight (oklch(0.30 0.03 160))
+- Added CSS keyframes: `confetti-fall`, `duration-progress`, `countdown-pulse`
+- Added `meeting-duration-bar` animation class
+
+**Part 4: Dashboard View Polish** (`dashboard-view.tsx`):
+- **Confetti/particle burst**: 12 colored particles burst outward when completion rate > 80%, auto-dismiss after 3s
+- **Streak indicator**: Flame icon badge showing consecutive days of activity (computed from activity timestamps)
+- **Auto-refresh timestamp**: "Last updated" with green pulse dot indicator + auto-refresh counter every 60s
+- **"Great progress!" badge**: PartyPopper icon celebration badge when completion rate > 80%
+- Added `useMemo` import, `Flame`, `PartyPopper` icons, `AnimatePresence` from framer-motion
+
+**Part 5: Calendar View Polish** (`calendar-view.tsx`):
+- **Drag-to-select date range**: Mouse drag across days highlights range in emerald, shows "N days selected" in header
+- **Hover tooltips on event dots**: Each event dot shows event type and event names on hover (using shadcn Tooltip)
+- **"Today" floating button**: Appears when viewing a different month (derived from `differenceInMonths`), animated with spring, uses Crosshair icon
+- Added `Crosshair` icon import, `Tooltip` components from shadcn
+- Added `isDragSelecting`, `dragStart`, `dragEnd`, `dragSelectedRange` state for drag selection
+- Applied `dark-card-glow` class to calendar grid and side panel cards
+- Removed unused `useState`/`useEffect` for today button (replaced with computed value)
+
+**Part 6: Meetings View Polish** (`meetings-view.tsx`):
+- **Countdown timer**: `useCountdown` hook updates every second, shows time until next meeting (hours/mins/seconds)
+- **NextMeetingCountdown component**: Shows next meeting with countdown, LIVE badge for in-progress, "Starts in X" for scheduled
+- **Quick Join button**: In-progress meetings show animated "Quick Join" button in countdown header with double pulse
+- **Meeting duration bar**: `MeetingDurationBar` component shows progress bar for in-progress meetings with elapsed percentage and start/end times
+- Enhanced pulse animation on Join buttons: double-layered (ping + pulse) for more visible feedback
+- Applied `dark-card-glow` class to meeting cards
+- Added `Timer`, `Radio` icons, `useMemo` import
+
+Stage Summary:
+- Page transitions with direction-aware animations
+- Premium shimmer skeleton loading with staggered entrance
+- API loading indicator in top bar
+- Dark mode refinements: better contrast, card glow, themed scrollbar, smooth theme transitions
+- Dashboard: confetti, streak, auto-refresh timestamp
+- Calendar: drag-to-select, event dot tooltips, floating Today button
+- Meetings: countdown timer, Quick Join pulse, duration progress bar
+- 0 lint errors
+- App compiling and serving successfully on port 3000
+
+---
+Task ID: 16-c
+Agent: subagent
+Task: Improve Wiki View with Rich Text Editing UI + Files View with Drag-Drop Upload
+
+Work Log:
+
+**Part 1: Wiki View - Rich Text Editing UI** (`src/components/views/wiki-view.tsx`):
+
+1. **Edit Mode Toggle**: Added animated toggle between "View" and "Edit" modes using Framer Motion AnimatePresence. View mode shows rendered content, Edit mode shows the split-pane editor. Smooth scale/opacity transitions between mode buttons.
+
+2. **Formatting Toolbar** (shown in edit mode, sticky at top):
+   - Bold (**), Italic (*), Strikethrough (~~), Code (`) buttons
+   - Heading level buttons (H1, H2, H3)
+   - Bulleted list (- ), Numbered list (1. ) buttons
+   - Quote (> ), Code block (```) buttons
+   - Link [text](url), Image ![alt](url) insertion buttons
+   - Vertical divider separators between groups
+   - Each button has active teal background state when the format is applied
+   - Toolbar sticks to top when scrolling in edit mode (`sticky top-0 z-10` with `backdrop-blur-sm`)
+
+3. **Content Editor Area**:
+   - Split-pane using ResizablePanelGroup (left: editor, right: live preview)
+   - ResizableHandle with grip between panes
+   - Auto-expanding textarea with `field-sizing-content` and min-height
+   - Markdown live preview with syntax highlighting for code blocks (language label header + pre/code formatting)
+   - Word count and character count displayed at bottom bar
+   - Unsaved changes indicator (pulsing amber dot + text)
+   - "Save" button (teal accent) and "Discard" button with confirmation dialog for unsaved changes
+   - Dialog shows warning with amber AlertTriangle icon, "Keep Editing" and "Discard Changes" buttons
+
+4. **Page Management**:
+   - Context menu on each wiki page tree item (right-click): View, Duplicate, Delete
+   - Duplicate Page: Creates a copy with "(copy)" suffix
+   - Delete Page: Confirmation dialog with red accent styling (rose-500), AlertDialogAction
+   - Drag handle (GripVertical) visible on hover for page tree items
+   - Page dropdown menu (MoreHorizontal) in header with Duplicate, Move, Delete options
+
+5. **Version History** (UI only):
+   - "History" tab alongside "View/Edit" tab in breadcrumb bar
+   - Version timeline showing version number, author avatar, date, diff indicators
+   - Added lines shown in emerald badge (+N lines added)
+   - Removed lines shown in rose badge (-N lines removed)
+   - Current version badge in teal accent
+   - "Restore this version" button per entry (non-current versions)
+   - Restore confirmation dialog with teal accent
+   - Connecting vertical line between version dots
+
+6. **Enhanced Markdown Rendering**:
+   - Blockquotes with teal left border and subtle background
+   - Numbered lists (1., 2., etc.) properly rendered
+   - Code blocks with language label header
+   - Inline formatting: bold, italic, strikethrough, inline code with teal accent
+   - dangerouslySetInnerHTML for processed inline formatting
+
+**Part 2: Files View - Enhanced Upload & Management** (`src/components/views/files-view.tsx`):
+
+1. **Drag & Drop Upload Zone**:
+   - Full-page drop zone overlay that appears when dragging files (fixed inset-0 z-50)
+   - Animated dashed border with pulsing effect and CloudUpload icon
+   - Uses dragCounterRef to properly track enter/leave events (prevents flickering)
+   - Simulated upload progress per file using setInterval (0→100% over ~2-4 seconds per file)
+   - Upload progress section: shows file name, size, per-file progress bar
+   - Success state (emerald CheckCircle2), error state (rose AlertCircle)
+   - File count badge and total size displayed
+   - Upload complete state with all progress bars filled
+   - Click-to-browse fallback (creates hidden file input)
+
+2. **File Preview Panel**:
+   - Dialog-based preview panel opens on file click
+   - Image files show image placeholder with ImageIcon
+   - Document files show file icon and first few lines of content (mock)
+   - File metadata grid: Size, Type, Upload date, Uploader with avatar
+   - Action buttons: Download (teal gradient), Share, Delete (rose accent)
+   - File version history section: version list with current badge, size, date, uploader per version
+
+3. **Enhanced Grid View**:
+   - Larger file thumbnails with hover zoom effect (scale-105 on icon container)
+   - File type badge with color coding (teal for docs, emerald for sheets, amber for presentations, pink for images, rose for PDFs)
+   - Star/favorite toggle on each file card (amber fill when favorited, transparent on hover otherwise)
+   - Multi-select mode with checkboxes on each card
+   - Selected card has teal ring highlight
+   - Bulk actions bar (animated slide-in): Download selected, Move selected, Delete selected (rose accent)
+   - Select all / Deselect all buttons in bulk actions bar
+   - Search input in header for filtering by name
+
+4. **Enhanced List View**:
+   - Sortable columns (Name, Size, Type, Modified, Owner) with arrow indicators
+   - Click to sort, click again to toggle asc/desc
+   - Active sort column shows teal ArrowUp/ArrowDown icon
+   - Row hover with action buttons (preview eye icon, more dropdown)
+   - Checkbox for multi-select in each row + header row select all
+   - Star/favorite toggle in each row
+   - Selected rows have teal background tint
+   - Type filter dropdown with icon pills
+
+5. **i18n Updates** (`src/lib/i18n/translations.ts`):
+   - Added 48+ new wiki translation keys for both FR and EN
+   - Added 28+ new files translation keys for both FR and EN
+   - Keys include: viewMode, editMode, save, discard, unsavedChanges, bold, italic, strikethrough, code, heading1-3, bulletList, numberedList, quote, codeBlock, link, image, duplicatePage, movePage, deletePage, history, versionHistory, restoreVersion, wordCount, charCount, etc.
+   - Files keys include: dropHere, dropFilesHere, orClick, uploading, uploadComplete, uploadFailed, fileName, fileSize, fileType, modified, owner, preview, share, fileDetails, versionHistory, favorite, bulkDownload, bulkDelete, multiSelect, sortBy, filterByType, etc.
+
+Stage Summary:
+- Wiki view completely rewritten with rich text editing, split-pane editor/preview, formatting toolbar, version history, page management (duplicate/move/delete), context menus, and confirmation dialogs
+- Files view completely rewritten with full-page drag-drop upload with simulated progress, file preview panel with version history, enhanced grid/list views with star/favorite, multi-select with bulk actions, sortable columns, and search filtering
+- 0 lint errors across both files
+- 76+ new i18n keys added for both FR and EN
+- All text uses useTranslation() for i18n
+- Consistent teal/emerald accent color scheme (no blue/indigo)

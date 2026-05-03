@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -22,6 +22,8 @@ import {
   PlayCircle,
   CalendarClock,
   ExternalLink,
+  Timer,
+  Radio,
 } from 'lucide-react';
 import { mockMeetings, mockUsers, mockProjects } from '@/lib/mock-data';
 import type { Meeting, MeetingStatus } from '@/lib/types';
@@ -32,7 +34,7 @@ import { useTranslation } from '@/lib/i18n';
 // Helper functions
 function getUserInitials(id: string) {
   const user = mockUsers.find((u) => u.id === id);
-  return user ? user.name.split(' ').map((n) => n[0]).join('') : '??';
+  return user ? user.name.split(' ').map((n: string) => n[0]).join('') : '??';
 }
 
 function getUserName(id: string) {
@@ -80,6 +82,75 @@ function formatDuration(minutes: number) {
   const hrs = Math.floor(minutes / 60);
   const mins = minutes % 60;
   return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
+}
+
+// ─── Countdown Timer Hook ────────────────────────────────────────────────────
+function useCountdown(targetDate: Date) {
+  const [timeLeft, setTimeLeft] = useState('');
+
+  useEffect(() => {
+    const updateCountdown = () => {
+      const now = new Date();
+      const diff = targetDate.getTime() - now.getTime();
+
+      if (diff <= 0) {
+        setTimeLeft('Starting now');
+        return;
+      }
+
+      const hours = Math.floor(diff / 3600000);
+      const minutes = Math.floor((diff % 3600000) / 60000);
+      const seconds = Math.floor((diff % 60000) / 1000);
+
+      if (hours > 0) {
+        setTimeLeft(`${hours}h ${minutes}m ${seconds}s`);
+      } else if (minutes > 0) {
+        setTimeLeft(`${minutes}m ${seconds}s`);
+      } else {
+        setTimeLeft(`${seconds}s`);
+      }
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [targetDate]);
+
+  return timeLeft;
+}
+
+// ─── Meeting Duration Bar ────────────────────────────────────────────────────
+function MeetingDurationBar({ meeting }: { meeting: Meeting }) {
+  const meetingDate = new Date(meeting.date);
+  const meetingEnd = new Date(meetingDate.getTime() + meeting.duration * 60000);
+  const now = new Date();
+
+  if (meeting.status !== 'in_progress') return null;
+
+  const totalDuration = meeting.duration * 60000; // in ms
+  const elapsed = now.getTime() - meetingDate.getTime();
+  const progress = Math.min(Math.max((elapsed / totalDuration) * 100, 0), 100);
+
+  return (
+    <div className="mt-2">
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-[10px] text-muted-foreground font-medium">Progress</span>
+        <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold">{Math.round(progress)}%</span>
+      </div>
+      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+        <motion.div
+          className="h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-500"
+          initial={{ width: 0 }}
+          animate={{ width: `${progress}%` }}
+          transition={{ duration: 0.8, ease: 'easeOut' }}
+        />
+      </div>
+      <div className="flex items-center justify-between mt-1">
+        <span className="text-[9px] text-muted-foreground">{formatMeetingTime(meeting.date)}</span>
+        <span className="text-[9px] text-muted-foreground">{formatMeetingTime(meetingEnd.toISOString())}</span>
+      </div>
+    </div>
+  );
 }
 
 // Status configuration with gradient border colors
@@ -139,12 +210,10 @@ const item = {
 function MeetingCard({ meeting, t }: { meeting: Meeting; t: ReturnType<typeof useTranslation>['t'] }) {
   const status = statusConfig[meeting.status];
   const project = meeting.projectId ? getProjectById(meeting.projectId) : null;
-  const isUpcoming =
-    meeting.status === 'scheduled' || meeting.status === 'in_progress';
 
   return (
     <motion.div variants={item}>
-      <Card className="group hover:shadow-lg transition-all duration-200 overflow-hidden relative">
+      <Card className="group hover:shadow-lg transition-all duration-200 overflow-hidden relative dark-card-glow">
         {/* Gradient left border */}
         <div className={cn('absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b', status.borderGradient)} />
 
@@ -232,6 +301,9 @@ function MeetingCard({ meeting, t }: { meeting: Meeting; t: ReturnType<typeof us
                   {meeting.attendees.length}
                 </span>
               </div>
+
+              {/* Duration bar for in-progress meetings */}
+              <MeetingDurationBar meeting={meeting} />
             </div>
 
             {/* Right: Action button */}
@@ -243,8 +315,9 @@ function MeetingCard({ meeting, t }: { meeting: Meeting; t: ReturnType<typeof us
                     'h-9 text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm relative overflow-hidden'
                   )}
                 >
-                  {/* Pulse animation */}
+                  {/* Enhanced pulse animation with double ring */}
                   <span className="absolute inset-0 rounded-md animate-ping bg-emerald-400/20" />
+                  <span className="absolute inset-0 rounded-md animate-pulse bg-emerald-400/10" />
                   <Video className="h-3.5 w-3.5 mr-1.5 relative z-10" />
                   <span className="relative z-10">{t.meetings.joinNow}</span>
                 </Button>
@@ -290,8 +363,6 @@ function TimelineItem({
 }) {
   const status = statusConfig[meeting.status];
   const project = meeting.projectId ? getProjectById(meeting.projectId) : null;
-  const isUpcoming =
-    meeting.status === 'scheduled' || meeting.status === 'in_progress';
 
   return (
     <motion.div
@@ -359,6 +430,9 @@ function TimelineItem({
                 {meeting.attendees.length}
               </span>
             </div>
+
+            {/* Duration bar for in-progress timeline items */}
+            <MeetingDurationBar meeting={meeting} />
           </div>
 
           {meeting.status === 'in_progress' ? (
@@ -367,6 +441,7 @@ function TimelineItem({
               className="h-8 text-[11px] shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white relative overflow-hidden"
             >
               <span className="absolute inset-0 rounded-md animate-ping bg-emerald-400/20" />
+              <span className="absolute inset-0 rounded-md animate-pulse bg-emerald-400/10" />
               <Video className="h-3 w-3 mr-1 relative z-10" />
               <span className="relative z-10">{t.meetings.joinNow}</span>
             </Button>
@@ -381,6 +456,89 @@ function TimelineItem({
           ) : null}
         </div>
       </div>
+    </motion.div>
+  );
+}
+
+// ─── Countdown Header ────────────────────────────────────────────────────────
+function NextMeetingCountdown() {
+  const nextMeeting = useMemo(() => {
+    return mockMeetings
+      .filter((m) => m.status === 'scheduled' || m.status === 'in_progress')
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
+  }, []);
+
+  const meetingDate = nextMeeting ? new Date(nextMeeting.date) : new Date();
+  const timeLeft = useCountdown(meetingDate);
+
+  if (!nextMeeting) return null;
+
+  const isStartingSoon = meetingDate.getTime() - Date.now() < 300000; // 5 min
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className={cn(
+        'flex items-center gap-3 px-4 py-2.5 rounded-xl border',
+        nextMeeting.status === 'in_progress'
+          ? 'bg-amber-500/5 border-amber-500/15'
+          : isStartingSoon
+          ? 'bg-emerald-500/5 border-emerald-500/15'
+          : 'bg-muted/30 border-border',
+      )}
+    >
+      <div className={cn(
+        'p-1.5 rounded-lg',
+        nextMeeting.status === 'in_progress'
+          ? 'bg-amber-500/15'
+          : 'bg-[oklch(0.55_0.15_160/0.1)]',
+      )}>
+        {nextMeeting.status === 'in_progress' ? (
+          <Radio className="h-4 w-4 text-amber-500 animate-countdown-pulse" />
+        ) : (
+          <Timer className="h-4 w-4 text-[oklch(0.55_0.15_160)]" />
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <p className="text-xs font-semibold truncate">{nextMeeting.title}</p>
+          {nextMeeting.status === 'in_progress' && (
+            <Badge className="text-[8px] px-1.5 py-0 h-4 bg-amber-500/15 text-amber-600 border-amber-500/15 font-bold">
+              LIVE
+            </Badge>
+          )}
+        </div>
+        <p className="text-[10px] text-muted-foreground mt-0.5">
+          {nextMeeting.status === 'in_progress' ? 'In progress · ' : 'Starts in '}
+          <span className={cn(
+            'font-bold font-mono',
+            isStartingSoon && 'text-emerald-600 dark:text-emerald-400',
+          )}>
+            {timeLeft}
+          </span>
+        </p>
+      </div>
+      {nextMeeting.status === 'in_progress' ? (
+        <Button
+          size="sm"
+          className="h-7 text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white relative overflow-hidden shrink-0"
+        >
+          <span className="absolute inset-0 rounded-md animate-ping bg-emerald-400/20" />
+          <Video className="h-3 w-3 mr-1 relative z-10" />
+          <span className="relative z-10">Quick Join</span>
+        </Button>
+      ) : (
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 text-[10px] shrink-0 hover:bg-[oklch(0.55_0.15_160/0.05)] hover:border-[oklch(0.55_0.15_160/0.3)]"
+        >
+          <Clock className="h-3 w-3 mr-1" />
+          {formatMeetingTime(nextMeeting.date)}
+        </Button>
+      )}
     </motion.div>
   );
 }
@@ -430,6 +588,9 @@ export function MeetingsView() {
 
   return (
     <div className="space-y-4">
+      {/* Next Meeting Countdown */}
+      <NextMeetingCountdown />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>

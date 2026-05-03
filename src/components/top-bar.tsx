@@ -56,13 +56,14 @@ import {
   Mail,
   AlertTriangle,
   Globe,
-  MessageSquare,
 } from 'lucide-react';
+import { MessageSquare } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 import type { PageId } from '@/lib/types';
+import { Loader2 } from 'lucide-react';
 
 const notificationTypeIcons: Record<string, React.ReactNode> = {
   assignment: <ListChecks className="h-3.5 w-3.5 text-[oklch(0.55_0.15_160)]" />,
@@ -92,6 +93,7 @@ export function TopBar() {
     locale,
     setLocale,
     setActivePage,
+    isApiLoading,
   } = useAppStore();
   const { t } = useTranslation();
   const { resolvedTheme, setTheme } = useTheme();
@@ -110,6 +112,19 @@ export function TopBar() {
     <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 bg-background/80 backdrop-blur-md relative">
       {/* Gradient border-bottom */}
       <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-[oklch(0.55_0.15_160/0.4)] via-[oklch(0.55_0.15_160/0.1)] to-transparent" />
+
+      {/* Data loading indicator - thin teal bar at top */}
+      <AnimatePresence>
+        {(isApiLoading || searchFocused) && (
+          <motion.div
+            initial={{ scaleX: 0, opacity: 0 }}
+            animate={{ scaleX: 1, opacity: 1 }}
+            exit={{ scaleX: 0, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[oklch(0.55_0.15_160)] to-transparent origin-left"
+          />
+        )}
+      </AnimatePresence>
 
       <div className="flex items-center gap-3">
         {/* Mobile hamburger menu */}

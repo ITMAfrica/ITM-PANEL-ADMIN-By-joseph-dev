@@ -11,82 +11,166 @@ export function useKeyboardShortcuts() {
     setCreateTaskDialogOpen,
     setCreateProjectDialogOpen,
     setNotificationPanelOpen,
+    setKeyboardShortcutsOpen,
+    setShortcutsHelpOpen,
+    setTaskDetailOpen,
+    setCreateWorkspaceDialogOpen,
+    searchOpen,
+    createTaskDialogOpen,
+    createProjectDialogOpen,
+    keyboardShortcutsOpen,
+    shortcutsHelpOpen,
+    notificationPanelOpen,
+    taskDetailOpen,
+    createWorkspaceDialogOpen,
   } = useAppStore();
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      // Don't trigger shortcuts when typing in inputs
+      // Don't trigger shortcuts when typing in inputs (except for Escape)
       const target = e.target as HTMLElement;
-      if (
+      const isInputField =
         target.tagName === 'INPUT' ||
         target.tagName === 'TEXTAREA' ||
-        target.isContentEditable
-      ) {
-        return;
-      }
+        target.isContentEditable;
 
       const isMeta = e.metaKey || e.ctrlKey;
 
-      // ⌘K - Search (already handled by search dialog, but add here too)
+      // Escape — close any open dialog/panel
+      if (e.key === 'Escape') {
+        const store = useAppStore.getState();
+        if (store.searchOpen) {
+          store.setSearchOpen(false);
+          return;
+        }
+        if (store.createTaskDialogOpen) {
+          store.setCreateTaskDialogOpen(false);
+          return;
+        }
+        if (store.createProjectDialogOpen) {
+          store.setCreateProjectDialogOpen(false);
+          return;
+        }
+        if (store.createWorkspaceDialogOpen) {
+          store.setCreateWorkspaceDialogOpen(false);
+          return;
+        }
+        if (store.keyboardShortcutsOpen) {
+          store.setKeyboardShortcutsOpen(false);
+          return;
+        }
+        if (store.shortcutsHelpOpen) {
+          store.setShortcutsHelpOpen(false);
+          return;
+        }
+        if (store.notificationPanelOpen) {
+          store.setNotificationPanelOpen(false);
+          return;
+        }
+        if (store.taskDetailOpen) {
+          store.setTaskDetailOpen(false);
+          store.setSelectedTask(null);
+          return;
+        }
+        return;
+      }
+
+      // All remaining shortcuts should not fire when user is typing in an input
+      if (isInputField) return;
+
+      // ⌘K / Ctrl+K — Search
       if (isMeta && e.key === 'k') {
         e.preventDefault();
         setSearchOpen(true);
         return;
       }
 
-      // ⌘N - New task
+      // ⌘N / Ctrl+N — New task
       if (isMeta && !e.shiftKey && e.key === 'n') {
         e.preventDefault();
         setCreateTaskDialogOpen(true);
         return;
       }
 
-      // ⌘⇧N - New project
-      if (isMeta && e.shiftKey && (e.key === 'N' || e.key === 'n')) {
+      // ⌘⇧P / Ctrl+Shift+P — New project
+      if (isMeta && e.shiftKey && (e.key === 'P' || e.key === 'p')) {
         e.preventDefault();
         setCreateProjectDialogOpen(true);
         return;
       }
 
-      // ⌘\ - Toggle sidebar
-      if (isMeta && e.key === '\\') {
+      // ⌘B / Ctrl+B — Toggle sidebar
+      if (isMeta && e.key === 'b') {
         e.preventDefault();
         toggleSidebar();
         return;
       }
 
-      // ⌘⇧I - Notifications
+      // ⌘/ / Ctrl+/ — Show keyboard shortcuts dialog
+      if (isMeta && e.key === '/') {
+        e.preventDefault();
+        const store = useAppStore.getState();
+        store.setKeyboardShortcutsOpen(!store.keyboardShortcutsOpen);
+        return;
+      }
+
+      // ⌘⇧I / Ctrl+Shift+I — Notifications
       if (isMeta && e.shiftKey && (e.key === 'I' || e.key === 'i')) {
         e.preventDefault();
         setNotificationPanelOpen(true);
         return;
       }
 
-      // Number keys for navigation (without modifier)
-      if (!isMeta && !e.altKey && !e.shiftKey) {
-        switch (e.key) {
-          case '1': setActivePage('dashboard'); break;
-          case '2': setActivePage('tasks'); break;
-          case '3': setActivePage('projects'); break;
-          case '4': setActivePage('calendar'); break;
-          case '5': setActivePage('messages'); break;
-          case '6': setActivePage('meetings'); break;
-          case '7': setActivePage('files'); break;
-          case '8': setActivePage('wiki'); break;
-          default: break;
+      // ⌘1-9 / Ctrl+1-9 — Navigate to views
+      if (isMeta && !e.altKey && !e.shiftKey) {
+        const pageMap: Record<string, Parameters<typeof setActivePage>[0]> = {
+          '1': 'dashboard',
+          '2': 'tasks',
+          '3': 'projects',
+          '4': 'calendar',
+          '5': 'messages',
+          '6': 'meetings',
+          '7': 'files',
+          '8': 'wiki',
+          '9': 'activity',
+        };
+        const page = pageMap[e.key];
+        if (page) {
+          e.preventDefault();
+          setActivePage(page);
+          return;
         }
       }
 
-      // ? - Show shortcuts help
+      // ? — Show keyboard shortcuts help (without modifier, but not in input)
       if (e.key === '?' && !isMeta) {
         e.preventDefault();
         const store = useAppStore.getState();
-        store.setShortcutsHelpOpen(true);
+        store.setShortcutsHelpOpen(!store.shortcutsHelpOpen);
         return;
       }
     }
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [setActivePage, setSearchOpen, toggleSidebar, setCreateTaskDialogOpen, setCreateProjectDialogOpen, setNotificationPanelOpen]);
+  }, [
+    setActivePage,
+    setSearchOpen,
+    toggleSidebar,
+    setCreateTaskDialogOpen,
+    setCreateProjectDialogOpen,
+    setNotificationPanelOpen,
+    setKeyboardShortcutsOpen,
+    setShortcutsHelpOpen,
+    setTaskDetailOpen,
+    setCreateWorkspaceDialogOpen,
+    searchOpen,
+    createTaskDialogOpen,
+    createProjectDialogOpen,
+    keyboardShortcutsOpen,
+    shortcutsHelpOpen,
+    notificationPanelOpen,
+    taskDetailOpen,
+    createWorkspaceDialogOpen,
+  ]);
 }

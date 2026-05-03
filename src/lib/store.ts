@@ -68,9 +68,17 @@ interface AppState {
   shortcutsHelpOpen: boolean;
   setShortcutsHelpOpen: (open: boolean) => void;
 
+  // Keyboard shortcuts dialog
+  keyboardShortcutsOpen: boolean;
+  setKeyboardShortcutsOpen: (open: boolean) => void;
+
   // Recent items
   recentItems: string[];
   addRecentItem: (pageId: string) => void;
+
+  // Global API loading indicator
+  isApiLoading: boolean;
+  setApiLoading: (loading: boolean) => void;
 
   // Auth
   isAuthenticated: boolean;
@@ -279,6 +287,10 @@ export const useAppStore = create<AppState>((set) => ({
   shortcutsHelpOpen: false,
   setShortcutsHelpOpen: (open) => set({ shortcutsHelpOpen: open }),
 
+  // Keyboard shortcuts dialog
+  keyboardShortcutsOpen: false,
+  setKeyboardShortcutsOpen: (open) => set({ keyboardShortcutsOpen: open }),
+
   // Recent items
   recentItems: ['dashboard', 'tasks', 'messages'],
   addRecentItem: (pageId) =>
@@ -286,6 +298,10 @@ export const useAppStore = create<AppState>((set) => ({
       const filtered = s.recentItems.filter((id) => id !== pageId);
       return { recentItems: [pageId, ...filtered].slice(0, 8) };
     }),
+
+  // Global API loading indicator
+  isApiLoading: false,
+  setApiLoading: (loading) => set({ isApiLoading: loading }),
 
   // Auth
   isAuthenticated: false,

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { mockTasks, mockProjects, mockUsers, mockActivities, mockMeetings } from '@/lib/mock-data';
+import { useAppStore } from '@/lib/store';
 
 interface DashboardStats {
   totalTasks: number;
@@ -41,6 +42,7 @@ export function useDashboardData(): DashboardData {
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
+    useAppStore.getState().setApiLoading(true);
     setError(null);
     try {
       const [tasksRes, projectsRes, usersRes] = await Promise.all([
@@ -84,6 +86,7 @@ export function useDashboardData(): DashboardData {
       setMeetings(mockMeetings as unknown as DataRecord[]);
     } finally {
       setIsLoading(false);
+      useAppStore.getState().setApiLoading(false);
     }
   }, []);
 

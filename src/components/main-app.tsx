@@ -24,6 +24,7 @@ import { CreateTaskDialog } from '@/components/create-task-dialog';
 import { CreateProjectDialog } from '@/components/create-project-dialog';
 import { TaskDetailDrawer } from '@/components/task-detail-drawer';
 import { ShortcutsDialog } from '@/components/shortcuts-dialog';
+import { KeyboardShortcutsDialog } from '@/components/keyboard-shortcuts-dialog';
 import { ConnectionStatus } from '@/components/connection-status';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { Toaster } from '@/components/ui/sonner';
@@ -31,6 +32,7 @@ import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, ArrowUp, Plus, CheckSquare, FolderKanban, Video } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { PageTransition } from '@/components/page-transition';
 
 const viewMap: Record<string, React.ComponentType> = {
   dashboard: DashboardView,
@@ -49,17 +51,7 @@ const viewMap: Record<string, React.ComponentType> = {
   settings: SettingsView,
 };
 
-const pageVariants = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -8 },
-};
 
-const pageTransition = {
-  type: 'tween',
-  ease: 'easeInOut',
-  duration: 0.2,
-};
 
 function AppFooter() {
   const { t } = useTranslation();
@@ -227,18 +219,9 @@ export function MainApp() {
         >
           {/* Subtle dot-pattern background overlay */}
           <div className="relative z-10">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activePage}
-                variants={pageVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={pageTransition}
-              >
-                <ActiveView />
-              </motion.div>
-            </AnimatePresence>
+            <PageTransition pageId={activePage}>
+              <ActiveView />
+            </PageTransition>
           </div>
         </main>
         <AppFooter />
@@ -265,8 +248,11 @@ export function MainApp() {
       {/* Create Project Dialog */}
       <CreateProjectDialog />
 
-      {/* Keyboard Shortcuts Dialog */}
+      {/* Keyboard Shortcuts Dialog (legacy, triggered by ?) */}
       <ShortcutsDialog />
+
+      {/* Keyboard Shortcuts Dialog (new, triggered by ⌘/) */}
+      <KeyboardShortcutsDialog />
 
       {/* Toast Notifications */}
       <Toaster />

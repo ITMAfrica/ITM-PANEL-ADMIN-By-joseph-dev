@@ -1,10 +1,16 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import {
   ChevronLeft,
   ChevronRight,
@@ -15,6 +21,7 @@ import {
   Target,
   Users,
   Plus,
+  Crosshair,
 } from 'lucide-react';
 import { mockCalendarEvents, mockProjects } from '@/lib/mock-data';
 import type { CalendarEvent } from '@/lib/types';
@@ -34,6 +41,7 @@ import {
   subMonths,
   isToday,
   parseISO,
+  differenceInMonths,
 } from 'date-fns';
 
 // Event type configuration
@@ -109,6 +117,10 @@ function CalendarDayCell({
   isSelected,
   isTodayDate,
   onSelect,
+  isDragSelecting,
+  isDragSelected,
+  onDragStart,
+  onDragOver,
 }: {
   day: Date;
   events: CalendarEvent[];
@@ -116,19 +128,26 @@ function CalendarDayCell({
   isSelected: boolean;
   isTodayDate: boolean;
   onSelect: (day: Date) => void;
+  isDragSelecting: boolean;
+  isDragSelected: boolean;
+  onDragStart: (day: Date) => void;
+  onDragOver: (day: Date) => void;
 }) {
   const eventTypes = [...new Set(events.map((e) => e.type))];
 
   return (
     <button
       onClick={() => onSelect(day)}
+      onMouseDown={() => onDragStart(day)}
+      onMouseEnter={() => isDragSelecting && onDragOver(day)}
       className={cn(
-        'relative flex flex-col items-center justify-start p-1.5 sm:p-2 min-h-[64px] sm:min-h-[84px] rounded-xl transition-all duration-200 text-left w-full group',
+        'relative flex flex-col items-center justify-start p-1.5 sm:p-2 min-h-[64px] sm:min-h-[84px] rounded-xl transition-all duration-200 text-left w-full group select-none',
         'hover:bg-muted/50 focus:outline-none',
         !isCurrentMonth && 'opacity-25',
         isSelected && !isTodayDate && 'bg-primary/8 ring-2 ring-primary/30 shadow-sm',
         isTodayDate && !isSelected && 'bg-emerald-500/5 ring-1 ring-emerald-500/20',
         isTodayDate && isSelected && 'bg-emerald-500/10 ring-2 ring-emerald-500/40 shadow-sm',
+        isDragSelected && !isTodayDate && 'bg-emerald-500/10 ring-1 ring-emerald-500/30',
       )}
     >
       <span
@@ -142,19 +161,34 @@ function CalendarDayCell({
         {format(day, 'd')}
       </span>
 
-      {/* Event dots */}
+      {/* Event dots with hover tooltips */}
       {eventTypes.length > 0 && (
-        <div className="flex items-center gap-0.5 mt-1.5 flex-wrap justify-center">
-          {eventTypes.slice(0, 4).map((type) => (
-            <span
-              key={type}
-              className={cn('w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ring-1 ring-white/50 dark:ring-background/50 shadow-sm', eventTypeConfig[type].dotColor)}
-            />
-          ))}
-          {eventTypes.length > 4 && (
-            <span className="text-[8px] text-muted-foreground font-medium">+{eventTypes.length - 4}</span>
-          )}
-        </div>
+        <TooltipProvider delayDuration={200}>
+          <div className="flex items-center gap-0.5 mt-1.5 flex-wrap justify-center">
+            {eventTypes.slice(0, 4).map((type) => {
+              const eventNames = events
+                .filter((e) => e.type === type)
+                .map((e) => e.title)
+                .join(', ');
+              return (
+                <Tooltip key={type}>
+                  <TooltipTrigger asChild>
+                    <span
+                      className={cn('w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ring-1 ring-white/50 dark:ring-background/50 shadow-sm cursor-default', eventTypeConfig[type].dotColor)}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs max-w-[200px]">
+                    <p className="font-semibold capitalize">{type}</p>
+                    <p className="text-muted-foreground">{eventNames}</p>
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
+            {eventTypes.length > 4 && (
+              <span className="text-[8px] text-muted-foreground font-medium">+{eventTypes.length - 4}</span>
+            )}
+          </div>
+        </TooltipProvider>
       )}
     </button>
   );
@@ -170,7 +204,7 @@ function EventCard({ event }: { event: CalendarEvent }) {
   return (
     <motion.div variants={item}>
       <div className={cn(
-        'group p-3 rounded-xl border-l-[3px] bg-card hover:shadow-md transition-all duration-200 cursor-pointer border border-l-0',
+        'group p-3 rounded-xl border-l-[3px] bg-card hover:shadow-md transition-all duration-200 cursor-pointer border border-l-0 dark-card-glow',
         'hover:translate-x-0.5',
       )}>
         <div className={cn('absolute left-0 top-0 bottom-0 w-[3px] rounded-l-xl', config.dotColor)} />
@@ -226,6 +260,44 @@ export function CalendarView() {
   const [selectedDay, setSelectedDay] = useState<Date | null>(new Date());
   const [direction, setDirection] = useState<number>(0);
 
+  // Drag-to-select date range state
+  const [isDragSelecting, setIsDragSelecting] = useState(false);
+  const [dragStart, setDragStart] = useState<Date | null>(null);
+  const [dragEnd, setDragEnd] = useState<Date | null>(null);
+  const [dragSelectedRange, setDragSelectedRange] = useState<Date[]>([]);
+
+  // "Today" floating button visibility - derived from currentMonth
+  const showTodayButton = Math.abs(differenceInMonths(currentMonth, new Date())) > 0;
+
+  const handleDragStart = useCallback((day: Date) => {
+    setIsDragSelecting(true);
+    setDragStart(day);
+    setDragEnd(day);
+    setDragSelectedRange([day]);
+  }, []);
+
+  const handleDragOver = useCallback((day: Date) => {
+    if (!isDragSelecting || !dragStart) return;
+    setDragEnd(day);
+    // Calculate range
+    const start = dragStart < day ? dragStart : day;
+    const end = dragStart < day ? day : dragStart;
+    const range = eachDayOfInterval({ start, end });
+    setDragSelectedRange(range);
+  }, [isDragSelecting, dragStart]);
+
+  useEffect(() => {
+    const handleMouseUp = () => {
+      if (isDragSelecting && dragStart && dragEnd && !isSameDay(dragStart, dragEnd)) {
+        // Range selected - could create an event for this range
+        setSelectedDay(dragStart);
+      }
+      setIsDragSelecting(false);
+    };
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => window.removeEventListener('mouseup', handleMouseUp);
+  }, [isDragSelecting, dragStart, dragEnd]);
+
   // Generate calendar days
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -271,13 +343,18 @@ export function CalendarView() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 relative">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold">{t.calendar.title}</h2>
           <p className="text-sm text-muted-foreground">
             {monthEvents.length} {t.calendar.events}
+            {isDragSelecting && dragSelectedRange.length > 1 && (
+              <span className="ml-2 text-emerald-600 font-medium">
+                · {dragSelectedRange.length} days selected
+              </span>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -343,7 +420,7 @@ export function CalendarView() {
       {/* Main content: Calendar + Side panel */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
         {/* Calendar Grid */}
-        <Card className="overflow-hidden">
+        <Card className="overflow-hidden dark-card-glow">
           <CardContent className="p-3 sm:p-4">
             {/* Weekday headers */}
             <div className="grid grid-cols-7 gap-1 mb-2">
@@ -369,6 +446,7 @@ export function CalendarView() {
               >
                 {calendarDays.map((day) => {
                   const dayEvents = getEventsForDay(day);
+                  const isDragSelected = dragSelectedRange.some((d) => isSameDay(d, day));
                   return (
                     <CalendarDayCell
                       key={day.toISOString()}
@@ -378,6 +456,10 @@ export function CalendarView() {
                       isSelected={selectedDay ? isSameDay(day, selectedDay) : false}
                       isTodayDate={isToday(day)}
                       onSelect={setSelectedDay}
+                      isDragSelecting={isDragSelecting}
+                      isDragSelected={isDragSelected}
+                      onDragStart={handleDragStart}
+                      onDragOver={handleDragOver}
                     />
                   );
                 })}
@@ -387,7 +469,7 @@ export function CalendarView() {
         </Card>
 
         {/* Side Panel: Events for selected day */}
-        <Card className="h-fit overflow-hidden">
+        <Card className="h-fit overflow-hidden dark-card-glow">
           <CardHeader className="pb-3 bg-gradient-to-b from-muted/30 to-transparent">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-bold">
@@ -436,6 +518,23 @@ export function CalendarView() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Floating "Today" button when scrolled away from current month */}
+      <AnimatePresence>
+        {showTodayButton && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 10 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            onClick={handleToday}
+            className="fixed bottom-20 right-8 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full bg-[oklch(0.55_0.15_160)] text-white shadow-lg hover:shadow-xl hover:bg-[oklch(0.48_0.15_160)] transition-shadow"
+          >
+            <Crosshair className="h-4 w-4" />
+            <span className="text-sm font-semibold">{t.calendar.today}</span>
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

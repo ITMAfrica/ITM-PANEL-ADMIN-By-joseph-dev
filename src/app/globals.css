@@ -88,19 +88,19 @@
 
 .dark {
   --background: oklch(0.13 0.015 155);
-  --foreground: oklch(0.95 0.01 155);
-  --card: oklch(0.18 0.02 155);
-  --card-foreground: oklch(0.95 0.01 155);
-  --popover: oklch(0.18 0.02 155);
-  --popover-foreground: oklch(0.95 0.01 155);
+  --foreground: oklch(0.96 0.01 155);
+  --card: oklch(0.17 0.015 155);
+  --card-foreground: oklch(0.96 0.01 155);
+  --popover: oklch(0.17 0.015 155);
+  --popover-foreground: oklch(0.96 0.01 155);
   --primary: oklch(0.6 0.16 160);
   --primary-foreground: oklch(0.15 0.02 155);
   --secondary: oklch(0.24 0.02 155);
-  --secondary-foreground: oklch(0.95 0.01 155);
+  --secondary-foreground: oklch(0.96 0.01 155);
   --muted: oklch(0.24 0.02 155);
-  --muted-foreground: oklch(0.65 0.02 155);
+  --muted-foreground: oklch(0.68 0.02 155);
   --accent: oklch(0.28 0.03 160);
-  --accent-foreground: oklch(0.95 0.01 155);
+  --accent-foreground: oklch(0.96 0.01 155);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(0.28 0.02 155);
   --input: oklch(0.28 0.02 155);
@@ -129,7 +129,12 @@
   }
 }
 
-/* Custom scrollbar */
+/* ─── Smooth Theme Transition ──────────────────────────────────────────────── */
+html {
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+/* Custom scrollbar - light mode */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -148,12 +153,29 @@
   background: oklch(0.55 0.02 155);
 }
 
+/* Dark mode scrollbar - thinner with teal accent */
+.dark ::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 .dark ::-webkit-scrollbar-thumb {
-  background: oklch(0.4 0.02 155);
+  background: oklch(0.35 0.03 160);
+  border-radius: 2px;
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: oklch(0.5 0.02 155);
+  background: oklch(0.5 0.1 160);
+}
+
+/* Firefox scrollbar dark mode */
+.dark * {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(0.35 0.03 160) transparent;
 }
 
 /* Smooth transitions for theme changes */
@@ -168,6 +190,21 @@
 [role="dialog"],
 .no-transition {
   transition: none !important;
+}
+
+/* ─── Dark Mode Card Glow ─────────────────────────────────────────────────── */
+.dark-card-glow {
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.dark .dark-card-glow:hover {
+  box-shadow: 0 0 20px oklch(0.6 0.16 160 / 0.08), 0 0 40px oklch(0.6 0.16 160 / 0.04);
+  border-color: oklch(0.6 0.16 160 / 0.2);
+}
+
+/* ─── Dark Mode Background Gradient ───────────────────────────────────────── */
+.dark .dot-pattern {
+  background-image: radial-gradient(circle, oklch(0.6 0.16 160 / 0.06) 1px, transparent 1px);
 }
 
 /* Kanban card drag styles */
@@ -223,7 +260,7 @@
 }
 
 .dark .glass-card {
-  background: oklch(0.18 0.02 155 / 0.6);
+  background: oklch(0.17 0.015 155 / 0.6);
   border-color: oklch(0.28 0.02 155 / 0.5);
 }
 
@@ -318,10 +355,6 @@
   background-size: 24px 24px;
 }
 
-.dark .dot-pattern {
-  background-image: radial-gradient(circle, oklch(0.6 0.16 160 / 0.06) 1px, transparent 1px);
-}
-
 /* Glow effect for active elements */
 .teal-glow {
   box-shadow: 0 0 20px oklch(0.55 0.15 160 / 0.15), 0 0 40px oklch(0.55 0.15 160 / 0.05);
@@ -361,7 +394,7 @@
   transition: border-radius 0.3s ease;
 }
 
-/* Skeleton loading shimmer */
+/* ─── Premium Skeleton Loading Shimmer ─────────────────────────────────────── */
 @keyframes skeleton-shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
@@ -382,7 +415,7 @@
   background: linear-gradient(
     90deg,
     oklch(0.24 0.02 155) 25%,
-    oklch(0.28 0.03 155) 50%,
+    oklch(0.30 0.03 160) 50%,
     oklch(0.24 0.02 155) 75%
   );
   background-size: 200% 100%;
@@ -404,4 +437,33 @@
   background-image: radial-gradient(circle, currentColor 1px, transparent 1px);
   background-size: 4px 4px;
   opacity: 0.3;
+}
+
+/* ─── Confetti / Particle Burst Animation ──────────────────────────────────── */
+@keyframes confetti-fall {
+  0% { transform: translateY(-10px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(40px) rotate(360deg); opacity: 0; }
+}
+
+.confetti-particle {
+  animation: confetti-fall 1.2s ease-out forwards;
+}
+
+/* ─── Meeting Duration Bar ─────────────────────────────────────────────────── */
+@keyframes duration-progress {
+  from { width: 0; }
+}
+
+.meeting-duration-bar {
+  animation: duration-progress 1s ease-out forwards;
+}
+
+/* ─── Countdown Pulse ──────────────────────────────────────────────────────── */
+@keyframes countdown-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-countdown-pulse {
+  animation: countdown-pulse 2s ease-in-out infinite;
 }
