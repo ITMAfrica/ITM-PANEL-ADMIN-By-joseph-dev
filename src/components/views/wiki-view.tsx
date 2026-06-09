@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect, useSyncExternalStore } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import {
   Dialog,
   DialogContent,
@@ -78,12 +84,15 @@ import {
   Check,
   GitCommit,
   AlertTriangle,
+  Clipboard,
+  ListTree,
 } from 'lucide-react';
 import { mockWikiPages, mockUsers } from '@/lib/mock-data';
 import type { WikiPage } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n';
+import { toast } from 'sonner';
 
 function getUserName(id: string) {
   return mockUsers.find((u) => u.id === id)?.name || 'Unknown';
@@ -277,6 +286,7 @@ function WikiTreeItem({
   depth = 0,
   onDuplicate,
   onDelete,
+  recentlyEditedIds = [],
 }: {
   node: WikiTreeNode;
   selectedId: string;
@@ -284,6 +294,7 @@ function WikiTreeItem({
   depth?: number;
   onDuplicate: (page: WikiPage) => void;
   onDelete: (page: WikiPage) => void;
+  recentlyEditedIds?: string[];
 }) {
   const isSelected = node.page.id === selectedId;
   const hasChildren = node.children.length > 0;
@@ -318,7 +329,10 @@ function WikiTreeItem({
             )}
             <span className="shrink-0 text-sm">{node.page.icon}</span>
             <span className="truncate text-xs font-medium">{node.page.title}</span>
-            {hasChildren && (
+            {recentlyEditedIds.includes(node.page.id) && (
+              <span className="ml-auto h-2 w-2 rounded-full bg-amber-400 shrink-0" />
+            )}
+            {hasChildren && !recentlyEditedIds.includes(node.page.id) && (
               <Badge variant="outline" className="ml-auto text-[8px] px-1 py-0 h-3.5 font-mono shrink-0 opacity-50">
                 {node.children.length}
               </Badge>
@@ -362,6 +376,7 @@ function WikiTreeItem({
                 depth={depth + 1}
                 onDuplicate={onDuplicate}
                 onDelete={onDelete}
+                recentlyEditedIds={recentlyEditedIds}
               />
             ))}
           </motion.div>
@@ -372,7 +387,17 @@ function WikiTreeItem({
 }
 
 // Simple markdown rendering with better typography and syntax highlighting
-function renderContent(content: string) {
+// Also returns h2 headings for table of contents
+function extractHeadings(content: string): { id: string; text: string }[] {
+  return content.split('\n')
+    .filter((line) => line.startsWith('## '))
+    .map((line, i) => ({
+      id: `heading-${i}`,
+      text: line.slice(3),
+    }));
+}
+
+function renderContent(content: string, headingPrefix = '') {
   let inCodeBlock = false;
   let codeBlockContent: string[] = [];
 
@@ -415,8 +440,9 @@ function renderContent(content: string) {
       );
     }
     if (line.startsWith('## ')) {
+      const headingIdx = content.split('\n').slice(0, i).filter((l) => l.startsWith('## ')).length;
       return (
-        <h2 key={i} className="text-lg font-bold mt-6 mb-2 pb-2 border-b border-border/50 text-foreground">
+        <h2 key={i} id={`${headingPrefix}heading-${headingIdx - 1}`} className="text-lg font-bold mt-6 mb-2 pb-2 border-b border-border/50 text-foreground scroll-mt-4">
           {line.slice(3)}
         </h2>
       );
@@ -491,6 +517,12 @@ export function WikiView() {
 
   const [pages, setPages] = useState<WikiPage[]>([...mockWikiPages]);
 
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+
   const tree = useMemo(() => buildTree(pages), [pages]);
 
   const selectedPage = pages.find((p) => p.id === selectedPageId);
@@ -498,6 +530,26 @@ export function WikiView() {
   const breadcrumbs = useMemo(() => {
     return selectedPageId ? getBreadcrumbs(selectedPageId, pages) : [];
   }, [selectedPageId, pages]);
+
+  // Check if page was edited in last 24 hours
+  const isRecentlyEdited = useMemo(() => {
+    if (!selectedPage || !mounted) return false;
+    const updatedAt = new Date(selectedPage.updatedAt);
+    const now = new Date();
+    return (now.getTime() - updatedAt.getTime()) < 86400000; // 24 hours
+  }, [selectedPage, mounted]);
+
+  // Extract h2 headings for table of contents
+  const tableOfContents = useMemo(() => {
+    if (!selectedPage) return [];
+    return extractHeadings(selectedPage.content);
+  }, [selectedPage]);
+
+  // Word count for view mode
+  const viewWordCount = useMemo(() => {
+    if (!selectedPage) return 0;
+    return selectedPage.content.trim().split(/\s+/).filter(Boolean).length;
+  }, [selectedPage]);
 
   const filteredPages = searchQuery
     ? pages.filter((p) =>
@@ -630,6 +682,16 @@ export function WikiView() {
     setPageToDelete(null);
   }, [pageToDelete, selectedPageId, pages]);
 
+  const handleCopyPageLink = useCallback(() => {
+    const url = `${window.location.origin}/wiki/${selectedPageId}`;
+    navigator.clipboard.writeText(url).then(() => {
+      toast.success(t.wiki.linkCopied);
+    }).catch(() => {
+      // Fallback: still show toast even if clipboard fails
+      toast.success(t.wiki.linkCopied);
+    });
+  }, [selectedPageId, t]);
+
   const handleSelectPage = useCallback((page: WikiPage) => {
     if (hasUnsavedChanges) {
       setShowDiscardDialog(true);
@@ -678,24 +740,30 @@ export function WikiView() {
             </div>
 
             {/* Page Tree */}
-            <ScrollArea className="h-[calc(100vh-18rem)]">
+            <ScrollArea className="h-[calc(100vh-26rem)]">
               {searchQuery ? (
                 <div className="space-y-0.5">
-                  {filteredPages.map((page) => (
-                    <button
-                      key={page.id}
-                      onClick={() => handleSelectPage(page)}
-                      className={cn(
-                        'w-full flex items-center gap-1.5 px-2 py-2 rounded-lg text-sm transition-all duration-150 text-left',
-                        selectedPageId === page.id
-                          ? 'bg-[oklch(0.55_0.15_160)/0.12] text-[oklch(0.45_0.15_160)] font-semibold'
-                          : 'hover:bg-muted/50'
-                      )}
-                    >
-                      <span className="text-sm">{page.icon}</span>
-                      <span className="truncate text-xs font-medium">{page.title}</span>
-                    </button>
-                  ))}
+                  {filteredPages.map((page) => {
+                    const pageRecentlyEdited = mounted && (new Date().getTime() - new Date(page.updatedAt).getTime()) < 86400000;
+                    return (
+                      <button
+                        key={page.id}
+                        onClick={() => handleSelectPage(page)}
+                        className={cn(
+                          'w-full flex items-center gap-1.5 px-2 py-2 rounded-lg text-sm transition-all duration-150 text-left',
+                          selectedPageId === page.id
+                            ? 'bg-[oklch(0.55_0.15_160)/0.12] text-[oklch(0.45_0.15_160)] font-semibold'
+                            : 'hover:bg-muted/50'
+                        )}
+                      >
+                        <span className="text-sm">{page.icon}</span>
+                        <span className="truncate text-xs font-medium">{page.title}</span>
+                        {pageRecentlyEdited && (
+                          <span className="ml-auto h-2 w-2 rounded-full bg-amber-400 shrink-0" title={t.wiki.recentlyEdited} />
+                        )}
+                      </button>
+                    );
+                  })}
                   {filteredPages.length === 0 && (
                     <div className="text-center py-6 text-muted-foreground">
                       <Search className="h-6 w-6 mx-auto mb-2 opacity-30" />
@@ -713,6 +781,7 @@ export function WikiView() {
                       onSelect={handleSelectPage}
                       onDuplicate={handleDuplicatePage}
                       onDelete={handleDeletePage}
+                      recentlyEditedIds={mounted ? pages.filter((p) => (new Date().getTime() - new Date(p.updatedAt).getTime()) < 86400000).map((p) => p.id) : []}
                     />
                   ))}
                 </div>
@@ -720,6 +789,32 @@ export function WikiView() {
             </ScrollArea>
 
             <Separator className="my-2" />
+
+            {/* Table of Contents for selected page */}
+            {tableOfContents.length > 0 && (
+              <div className="mb-2">
+                <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                  <ListTree className="h-3 w-3" />
+                  {t.wiki.tableOfContents}
+                </h4>
+                <div className="space-y-0.5">
+                  {tableOfContents.map((heading, idx) => (
+                    <button
+                      key={heading.id}
+                      onClick={() => {
+                        const el = document.getElementById(`view-heading-${idx}`);
+                        el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }}
+                      className="w-full text-left text-[10px] text-muted-foreground hover:text-foreground pl-2 py-0.5 border-l-2 border-transparent hover:border-[oklch(0.55_0.15_160)/40] transition-colors truncate"
+                    >
+                      {heading.text}
+                    </button>
+                  ))}
+                </div>
+                <Separator className="mt-2" />
+              </div>
+            )}
+
             <Button variant="ghost" size="sm" className="w-full h-8 text-xs justify-start text-[oklch(0.55_0.15_160)] hover:text-[oklch(0.45_0.15_160)] hover:bg-[oklch(0.55_0.15_160)/10]">
               <Plus className="h-3.5 w-3.5 mr-1.5" /> {t.wiki.newPage}
             </Button>
@@ -1067,7 +1162,15 @@ export function WikiView() {
                         <div className="flex items-center gap-3">
                           <span className="text-2xl">{selectedPage.icon}</span>
                           <div>
-                            <h2 className="text-xl font-bold tracking-tight">{selectedPage.title}</h2>
+                            <div className="flex items-center gap-2">
+                              <h2 className="text-xl font-bold tracking-tight">{selectedPage.title}</h2>
+                              {isRecentlyEdited && (
+                                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-500/10 text-[9px] font-medium text-amber-600">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                                  {t.wiki.recentlyEdited}
+                                </span>
+                              )}
+                            </div>
                             <div className="flex items-center gap-2 mt-1.5">
                               <Avatar className="h-5 w-5">
                                 <AvatarFallback
@@ -1085,10 +1188,29 @@ export function WikiView() {
                                 <Clock className="h-3 w-3" />
                                 {formatRelativeTime(selectedPage.updatedAt)}
                               </span>
+                              <span className="text-xs text-muted-foreground/60">·</span>
+                              <span className="text-xs text-muted-foreground">
+                                {viewWordCount} {t.wiki.words}
+                              </span>
                             </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-1.5">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={handleCopyPageLink}
+                                  className="h-8 w-8 p-0 shadow-sm border-border/50 hover:border-[oklch(0.55_0.15_160)/30] hover:bg-[oklch(0.55_0.15_160)/10]"
+                                >
+                                  <Clipboard className="h-3.5 w-3.5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>{t.wiki.copyPageLink}</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                           <Button
                             variant="outline"
                             size="sm"

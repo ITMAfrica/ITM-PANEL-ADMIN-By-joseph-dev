@@ -218,11 +218,16 @@ export function SettingsView() {
                         onCheckedChange={(v) => setGeneralSettings((p) => ({ ...p, compactSidebar: v }))}
                       />
                     </div>
-                    <Button
-                      className="gap-1.5 bg-gradient-to-r from-[oklch(0.55_0.15_160)] to-[oklch(0.50_0.15_165)] hover:from-[oklch(0.50_0.15_160)] hover:to-[oklch(0.45_0.15_165)] shadow-sm shadow-[oklch(0.55_0.15_160/0.2)] text-white"
-                    >
-                      <Save className="h-4 w-4" /> {t.settings.saveChanges}
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        className="gap-1.5 bg-gradient-to-r from-[oklch(0.55_0.15_160)] to-[oklch(0.50_0.15_165)] hover:from-[oklch(0.50_0.15_160)] hover:to-[oklch(0.45_0.15_165)] shadow-sm shadow-[oklch(0.55_0.15_160/0.2)] text-white hover:shadow-[oklch(0.55_0.15_160/0.4)] transition-shadow"
+                      >
+                        <Save className="h-4 w-4" /> {t.settings.saveChanges}
+                      </Button>
+                      <button className="text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-4 hover:underline">
+                        {t.settings.resetToDefaults}
+                      </button>
+                    </div>
                   </CardContent>
                 </Card>
               )}
@@ -282,11 +287,16 @@ export function SettingsView() {
                       <Label className="text-sm font-medium">{t.settings.bio}</Label>
                       <Input defaultValue="Product Manager at Acme Corp" className="bg-muted/30 border-transparent focus:border-[oklch(0.55_0.15_160/0.3)] focus:bg-background transition-all" />
                     </div>
-                    <Button
-                      className="gap-1.5 bg-gradient-to-r from-[oklch(0.55_0.15_160)] to-[oklch(0.50_0.15_165)] hover:from-[oklch(0.50_0.15_160)] hover:to-[oklch(0.45_0.15_165)] shadow-sm shadow-[oklch(0.55_0.15_160/0.2)] text-white"
-                    >
-                      <Save className="h-4 w-4" /> {t.settings.saveChanges}
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        className="gap-1.5 bg-gradient-to-r from-[oklch(0.55_0.15_160)] to-[oklch(0.50_0.15_165)] hover:from-[oklch(0.50_0.15_160)] hover:to-[oklch(0.45_0.15_165)] shadow-sm shadow-[oklch(0.55_0.15_160/0.2)] text-white hover:shadow-[oklch(0.55_0.15_160/0.4)] transition-shadow"
+                      >
+                        <Save className="h-4 w-4" /> {t.settings.saveChanges}
+                      </Button>
+                      <button className="text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-4 hover:underline">
+                        {t.settings.resetToDefaults}
+                      </button>
+                    </div>
                   </CardContent>
                 </Card>
               )}
@@ -476,26 +486,26 @@ export function SettingsView() {
                   </Card>
 
                   {/* Danger Zone */}
-                  <Card className="border-2 border-rose-500/20 shadow-sm overflow-hidden">
-                    <div className="h-1 bg-gradient-to-r from-rose-500 to-rose-600" />
+                  <Card className="border-2 border-rose-500/30 shadow-sm overflow-hidden dark:border-rose-500/20">
+                    <div className="h-1 bg-gradient-to-r from-rose-500 via-rose-600 to-red-600" />
                     <CardHeader className="pb-4">
                       <div className="flex items-center gap-2.5">
-                        <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/15">
-                          <AlertTriangle className="h-4 w-4 text-rose-600" />
+                        <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/15 dark:bg-rose-500/20 dark:border-rose-500/25">
+                          <AlertTriangle className="h-4 w-4 text-rose-600 dark:text-rose-400" />
                         </div>
                         <div>
-                          <CardTitle className="text-base text-rose-600">{t.settings.dangerZone}</CardTitle>
-                          <CardDescription>{t.settings.dangerDesc}</CardDescription>
+                          <CardTitle className="text-base text-rose-600 dark:text-rose-400">{t.settings.dangerZone}</CardTitle>
+                          <CardDescription className="dark:text-rose-300/60">{t.settings.dangerDesc}</CardDescription>
                         </div>
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <div className="flex items-center justify-between p-4 rounded-xl border-2 border-rose-500/20 bg-rose-500/[0.03]">
+                      <div className="flex items-center justify-between p-4 rounded-xl border-2 border-rose-500/30 bg-rose-500/[0.03] dark:bg-rose-500/[0.08] dark:border-rose-500/25">
                         <div>
-                          <p className="text-sm font-semibold text-rose-700">{t.settings.deleteWorkspace}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{t.settings.deleteWorkspaceDesc}</p>
+                          <p className="text-sm font-semibold text-rose-700 dark:text-rose-300">{t.settings.deleteWorkspace}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5 dark:text-rose-200/50">{t.settings.deleteWorkspaceDesc}</p>
                         </div>
-                        <Button variant="destructive" size="sm" className="gap-1.5 shadow-sm">
+                        <Button variant="destructive" size="sm" className="gap-1.5 shadow-sm dark:bg-rose-600 dark:hover:bg-rose-700">
                           <Trash2 className="h-4 w-4" /> {t.settings.delete}
                         </Button>
                       </div>

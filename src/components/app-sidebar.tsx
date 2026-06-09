@@ -186,11 +186,12 @@ const allNavItems: NavItemConfig[] = [
   { icon: <UserCircle className="h-4 w-4" />, label: 'Teams', pageId: 'teams' },
   { icon: <BarChart3 className="h-4 w-4" />, label: 'Reports', pageId: 'reports' },
   { icon: <Zap className="h-4 w-4" />, label: 'Automations', pageId: 'automations' },
+  { icon: <BarChart3 className="h-4 w-4" />, label: 'Progress Board', pageId: 'progress' },
 ];
 
 const mainPageIds: Set<string> = new Set(['dashboard', 'tasks', 'projects', 'calendar']);
 const collabPageIds: Set<string> = new Set(['messages', 'meetings', 'files', 'wiki']);
-const managePageIds: Set<string> = new Set(['activity', 'members', 'teams', 'reports', 'automations']);
+const managePageIds: Set<string> = new Set(['activity', 'members', 'teams', 'reports', 'automations', 'progress']);
 
 export function AppSidebar() {
   const {

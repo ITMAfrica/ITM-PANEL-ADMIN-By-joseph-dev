@@ -16,6 +16,7 @@ export type PageId =
   | 'teams'
   | 'reports'
   | 'automations'
+  | 'progress'
   | 'settings';
 
 export type TaskStatus = 'todo' | 'in_progress' | 'review' | 'done';

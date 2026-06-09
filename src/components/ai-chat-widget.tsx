@@ -4,30 +4,13 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAppStore } from '@/lib/store';
 import { useTranslation } from '@/lib/i18n';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, X, Send, Paperclip, Mic, Sparkles } from 'lucide-react';
+import { Bot, X, Send, Paperclip, Mic, Sparkles, AlertCircle, RotateCcw } from 'lucide-react';
 
 interface ChatMessage {
   id: string;
-  role: 'user' | 'ai';
+  role: 'user' | 'ai' | 'error';
   content: string;
   timestamp: Date;
-}
-
-function getAIResponse(message: string): string {
-  const lower = message.toLowerCase();
-  if (lower.includes('task')) {
-    return "You have 5 tasks in progress and 4 in your to-do list. Your highest priority task is 'Set up authentication flow'. Would you like me to create a new task?";
-  }
-  if (lower.includes('deadline') || lower.includes('due')) {
-    return "You have 2 tasks due this week: 'Design homepage hero section' (Jan 25) and 'Create onboarding screens' (Jan 28). Both are high priority.";
-  }
-  if (lower.includes('meeting')) {
-    return "You have 2 meetings scheduled: 'Sprint Planning' today at 2:00 PM and 'Design Review' tomorrow at 10:00 AM.";
-  }
-  if (lower.includes('team') || lower.includes('member')) {
-    return "Your team has 8 members. 5 are currently online. Sarah Chen and Mike Johnson are working on the Mobile App project.";
-  }
-  return `I understand you're asking about '${message}'. Let me look into that for you. In the meantime, you can check your dashboard for an overview or ask me about specific tasks, deadlines, or meetings.`;
 }
 
 export function AiChatWidget() {
@@ -46,6 +29,8 @@ export function AiChatWidget() {
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -63,9 +48,49 @@ export function AiChatWidget() {
     }
   }, [aiChatOpen]);
 
+  const callLlmApi = useCallback(async (message: string) => {
+    setIsLoading(true);
+    setIsTyping(true);
+    setLastFailedMessage(null);
+
+    try {
+      const response = await fetch('/api/ai-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'API request failed');
+      }
+
+      const aiMsg: ChatMessage = {
+        id: `ai-${Date.now()}`,
+        role: 'ai',
+        content: data.message || data.fallback || t.aiChat.errorMessage,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, aiMsg]);
+    } catch {
+      const errorMsg: ChatMessage = {
+        id: `error-${Date.now()}`,
+        role: 'error',
+        content: t.aiChat.errorMessage,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMsg]);
+      setLastFailedMessage(message);
+    } finally {
+      setIsLoading(false);
+      setIsTyping(false);
+    }
+  }, [t]);
+
   const handleSend = useCallback(() => {
     const trimmed = input.trim();
-    if (!trimmed) return;
+    if (!trimmed || isLoading) return;
 
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -76,24 +101,20 @@ export function AiChatWidget() {
 
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
-    setIsTyping(true);
+    callLlmApi(trimmed);
+  }, [input, isLoading, callLlmApi]);
 
-    setTimeout(() => {
-      const aiResponse = getAIResponse(trimmed);
-      const aiMsg: ChatMessage = {
-        id: `ai-${Date.now()}`,
-        role: 'ai',
-        content: aiResponse,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, aiMsg]);
-      setIsTyping(false);
-    }, 1000);
-  }, [input]);
+  const handleRetry = useCallback(() => {
+    if (lastFailedMessage) {
+      // Remove the last error message
+      setMessages((prev) => prev.filter((m) => m.role !== 'error'));
+      setLastFailedMessage(null);
+      callLlmApi(lastFailedMessage);
+    }
+  }, [lastFailedMessage, callLlmApi]);
 
   const handleQuickAction = useCallback((action: string) => {
-    setInput(action);
-    // Auto-send the quick action
+    if (isLoading) return;
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
@@ -102,20 +123,8 @@ export function AiChatWidget() {
     };
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
-    setIsTyping(true);
-
-    setTimeout(() => {
-      const aiResponse = getAIResponse(action);
-      const aiMsg: ChatMessage = {
-        id: `ai-${Date.now()}`,
-        role: 'ai',
-        content: aiResponse,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, aiMsg]);
-      setIsTyping(false);
-    }, 1000);
-  }, []);
+    callLlmApi(action);
+  }, [isLoading, callLlmApi]);
 
   const quickActions = [
     t.aiChat.summarizeTasks,
@@ -162,7 +171,14 @@ export function AiChatWidget() {
                   <Bot className="h-4 w-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold">{t.aiChat.title}</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-semibold">{t.aiChat.title}</h3>
+                    {/* AI-Powered Badge */}
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-white/20 backdrop-blur-sm border border-white/20">
+                      <Sparkles className="h-2.5 w-2.5" />
+                      {t.aiChat.aiPowered}
+                    </span>
+                  </div>
                   <div className="flex items-center gap-1.5">
                     <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
                     <span className="text-[11px] text-white/80">{t.aiChat.online}</span>
@@ -190,9 +206,11 @@ export function AiChatWidget() {
                 >
                   <div
                     className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
-                      msg.role === 'ai'
-                        ? 'bg-[oklch(0.55_0.15_160/0.1)] text-foreground border border-[oklch(0.55_0.15_160/0.15)]'
-                        : 'bg-muted text-foreground'
+                      msg.role === 'error'
+                        ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
+                        : msg.role === 'ai'
+                          ? 'bg-[oklch(0.55_0.15_160/0.1)] text-foreground border border-[oklch(0.55_0.15_160/0.15)]'
+                          : 'bg-muted text-foreground'
                     }`}
                   >
                     {msg.role === 'ai' && (
@@ -201,7 +219,22 @@ export function AiChatWidget() {
                         <span className="text-[10px] font-medium text-[oklch(0.55_0.15_160)]">{t.aiChat.title}</span>
                       </div>
                     )}
-                    <p>{msg.content}</p>
+                    {msg.role === 'error' && (
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <AlertCircle className="h-3.5 w-3.5" />
+                        <span className="text-[10px] font-medium">{t.aiChat.errorTitle}</span>
+                      </div>
+                    )}
+                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                    {msg.role === 'error' && (
+                      <button
+                        onClick={handleRetry}
+                        className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-rose-500/10 hover:bg-rose-500/20 transition-colors"
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                        {t.aiChat.retry}
+                      </button>
+                    )}
                   </div>
                 </motion.div>
               ))}
@@ -252,7 +285,8 @@ export function AiChatWidget() {
                   <button
                     key={i}
                     onClick={() => handleQuickAction(action)}
-                    className="shrink-0 px-2.5 py-1 rounded-full text-[11px] font-medium bg-[oklch(0.55_0.15_160/0.08)] text-[oklch(0.55_0.15_160)] border border-[oklch(0.55_0.15_160/0.15)] hover:bg-[oklch(0.55_0.15_160/0.15)] transition-colors"
+                    disabled={isLoading}
+                    className="shrink-0 px-2.5 py-1 rounded-full text-[11px] font-medium bg-[oklch(0.55_0.15_160/0.08)] text-[oklch(0.55_0.15_160)] border border-[oklch(0.55_0.15_160/0.15)] hover:bg-[oklch(0.55_0.15_160/0.15)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {action}
                   </button>
@@ -281,7 +315,8 @@ export function AiChatWidget() {
                     }
                   }}
                   placeholder={t.aiChat.placeholder}
-                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/60"
+                  disabled={isLoading}
+                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/60 disabled:opacity-50"
                 />
                 <button
                   className="p-1 text-muted-foreground hover:text-foreground transition-colors"
@@ -291,7 +326,7 @@ export function AiChatWidget() {
                 </button>
                 <button
                   onClick={handleSend}
-                  disabled={!input.trim()}
+                  disabled={!input.trim() || isLoading}
                   className="p-1.5 rounded-lg bg-[oklch(0.55_0.15_160)] text-white hover:bg-[oklch(0.55_0.15_160/0.9)] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                   aria-label="Send message"
                 >

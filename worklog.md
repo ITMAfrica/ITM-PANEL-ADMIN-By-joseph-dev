@@ -1319,3 +1319,100 @@ TeamFlow is a fully-featured collaborative project management web app. All 14 vi
 4. **File upload functionality** in Files view
 5. **Real-time notifications** via WebSocket push
 6. **Keyboard shortcuts** — expand keyboard navigation throughout the app
+
+---
+Task ID: 13-a
+Agent: View Enhancement Agent
+Task: Enhance Teams View, Members View, and Automations View with significantly more details, interactivity, and features
+
+Work Log:
+
+**Translations (`src/lib/i18n/translations.ts`):**
+- Added 22 new i18n keys for Teams section (FR + EN): searchTeams, grid, list, lead, teamLead, performance, tasksThisWeek, avgVelocity, recentActivity, memberRole, memberStatus, memberTasks, projectProgress, noActivityYet, filterBySize, small, medium, large, expandDetails, collapseDetails
+- Added 16 new i18n keys for Members section (FR + EN): totalMembers, onlineNow, newThisMonth, admins, grid, list, sortBy, sortName, sortRole, sortStatus, sortJoinDate, profile, sendMessage, assignTask, changeRole, tasks, projects, activity, joinDate, noTasksAssigned, noProjects, activityGraph, quickActions, addMember
+- Added 28 new i18n keys for Automations section (FR + EN): browseTemplates, runsThisWeek, timeSaved, executionHistory, historyTimestamp, historyStatus, historyDuration, success, failed, templateTitle, useTemplate, trigger, action, condition, createNewAutomation, selectTrigger, selectAction, addCondition, autoAssignByPriority (+Desc), sendDeadlineReminders (+Desc), moveCompletedToDone (+Desc), notifyOnStatusChange (+Desc), weeklyProgressReport (+Desc), autoCreateRecurringTasks (+Desc), triggerTaskCreated, triggerStatusChanged, triggerDeadlineApproaching, triggerCommentAdded, actionSendNotification, actionMoveTask, actionAssignMember, actionAddTag, actionSendEmail, hours
+
+**Teams View (`src/components/views/teams-view.tsx`) — 206→470 lines:**
+- **Team Detail Expansion**: Added expandable detail section when clicking "View details" button on team cards. Shows team members list with roles/status/task counts, team projects with progress bars, recent team activity feed (last 5 items), and team stats (tasks completed this week, avg velocity)
+- **Circular Progress Component**: Added SVG-based circular progress indicator showing team health/performance (based on task completion rate). Animated stroke-dashoffset with Framer Motion
+- **Team Leader Indicator**: First member in each team shows a "Lead" badge with Crown icon in teal accent
+- **Search & Filter**: Added search bar for team names/descriptions and size filter dropdown (Small 1-3, Medium 4-6, Large 7+ members)
+- **Grid/List View Toggle**: Added Tabs component with LayoutGrid/List icons to switch between grid cards and list rows. List view shows compact team rows with performance indicator, member count, project count, and avatar stack
+- **All new text uses useTranslation()** for i18n
+
+**Members View (`src/components/views/members-view.tsx`) — 281→460 lines:**
+- **Member Detail Sheet**: Click on member card/row to open a detailed Sheet component with: full profile info (name, email, role, join date, status), tasks assigned (list with status icons), projects participating in (with colored dots and progress %), activity graph (mini bar chart of last 7 days with ActivityBar component), quick actions (Send Message, Assign Task, Change Role buttons)
+- **Member Stats Summary**: Added 4 summary cards at top: Total Members, Online Now, New This Month, Admins — each with gradient background, colored icon container, and extrabold value
+- **Sort Options**: Added Select dropdown to sort by Name, Role, or Status with ArrowUpDown icon
+- **Grid/List View Toggle**: Added Tabs with LayoutGrid/List icons. Grid view shows enhanced cards with task/project counts. List view shows compact table rows with avatar, name/email, role badge, status, task count, and project count
+- **All new text uses useTranslation()** for i18n
+
+**Automations View (`src/components/views/automations-view.tsx`) — 279→490 lines:**
+- **Automation Templates**: Added "Browse Templates" section with 6 pre-built automation recipe cards: Auto-assign by priority, Deadline reminders 24h before, Move completed to Done, Notify on status change, Weekly progress report, Auto-create recurring tasks. Each template has: colored icon container, name (i18n), description (i18n), trigger→action preview pills, "Use Template" button
+- **Enhanced Stats**: Expanded from 3 to 4 stat cards: Total Automations, Active, Runs This Week (new), Time Saved (new) — with gradient backgrounds and colored icons
+- **Automation History**: Added execution history section showing 8 recent runs with: status icon (CheckCircle2/XCircle), automation name, timestamp, status badge (Success/Failed), duration in monospace font. Staggered entrance animations
+- **Create Automation Dialog**: Added Dialog component with: Trigger dropdown (Task created, Status changed, Deadline approaching, Comment added), Action dropdown (Send notification, Move task, Assign member, Add tag, Send email), optional Condition input, Cancel/Create buttons with teal gradient. Dialog opens from header "Create Automation" button
+- **All new text uses useTranslation()** for i18n
+
+Stage Summary:
+- All 3 views dramatically enhanced with more depth, interactivity, and features
+- 0 lint errors, 0 compilation errors
+- App compiling and serving successfully on port 3000
+- Full i18n support for all new text in both FR and EN
+- Consistent teal/emerald accent color scheme (no blue/indigo)
+
+---
+Task ID: 13-b
+Agent: main
+Task: Add Data Export feature (CSV) to Reports view and AI-powered Smart Suggestions widget to the Dashboard
+
+Work Log:
+
+**1. Export Utility Functions** (`src/lib/export-utils.ts`):
+- Created `objectsToCSV()` - converts array of objects to CSV format with RFC 4180 escaping (commas, quotes, newlines)
+- Created `objectsToJSON()`, `createCSVBlob()`, `createJSONBlob()`, `downloadBlob()` helper functions
+- Created `exportToCSV()`, `exportToJSON()`, `copyToClipboard()` end-to-end export functions
+- Created `formatTasksForExport()`, `formatProjectsForExport()`, `formatWorkloadForExport()` formatters
+
+**2. Export API Route** (`src/app/api/export/route.ts`):
+- GET endpoint at `/api/export?format=csv&type=tasks|projects|workload`
+- Queries Prisma database with proper includes (tasks with assignee/project, projects with tasks, teams with member workload)
+- Returns CSV with Content-Type text/csv and Content-Disposition header
+- Returns JSON with Content-Type application/json and Content-Disposition header
+
+**3. AI Chat API Enhancement** (`src/app/api/ai-chat/route.ts`):
+- Added `suggestions` mode: `{ mode: 'suggestions' }` generates 5 AI productivity suggestions
+- Uses dedicated SUGGESTIONS_PROMPT instructing AI to return JSON array with id, icon, title, description, action, actionType
+- Action types: create_task, view_project, schedule_meeting, review_task, check_deadline
+- Falls back to FALLBACK_SUGGESTIONS when AI is unavailable or returns invalid JSON
+
+**4. Smart Suggestions Hook** (`src/hooks/use-smart-suggestions.ts`):
+- Custom `useSmartSuggestions()` hook returning: suggestions, isLoading, error, refresh()
+- 5-minute client-side cache, prevents concurrent fetches
+- Falls back to FALLBACK_SUGGESTIONS on error
+
+**5. Reports View Export Dropdown** (`src/components/views/reports-view.tsx`):
+- Replaced simple "Export" button with DropdownMenu
+- Three sections (Tasks, Projects, Workload) each with: Export as CSV, Export as JSON, Copy to Clipboard
+- Colored icons per action (FileSpreadsheet=emerald, FileJson=amber, Clipboard/Check=muted)
+- Copy shows "Copied!" with checkmark for 2 seconds after successful copy
+
+**6. Dashboard Smart Suggestions Card** (`src/components/views/dashboard-view.tsx`):
+- Added Smart Suggestions card in bottom row grid (2-col span next to Time Tracker)
+- Gradient accent background, Sparkles icon with teal accent container
+- Loading state: 3 skeleton rows + "AI is generating suggestions..." text
+- Each suggestion: emoji icon, title, description, hover action button
+- Staggered entrance animation, scrollable content (max-h-[260px])
+- Action buttons navigate to appropriate pages via store actions
+
+**7. i18n Translation Keys** (`src/lib/i18n/translations.ts`):
+- FR and EN `reports`: exportTasks, exportProjects, exportWorkload, exportAsCSV, exportAsJSON, copyToClipboard, copied
+- FR and EN `dashboard`: suggestionsTitle, suggestionsDescription, suggestionsRefresh, suggestionsLoading, suggestionsActionCreateTask/ViewProject/ScheduleMeeting/ReviewTask/CheckDeadline
+
+Stage Summary:
+- Data export feature fully functional: CSV, JSON, clipboard for tasks, projects, and workload
+- AI Smart Suggestions widget integrated into Dashboard with fallback support
+- Export API route with Prisma database queries
+- All new text fully i18n-ready (FR + EN)
+- 0 lint errors, 0 compilation errors
+- App compiling and serving successfully on port 3000

@@ -33,6 +33,8 @@ import {
   UserPlus,
 } from 'lucide-react';
 import { useDashboardData } from '@/hooks/use-dashboard-data';
+import { useSmartSuggestions } from '@/hooks/use-smart-suggestions';
+import type { SmartSuggestion } from '@/hooks/use-smart-suggestions';
 import { useTranslation } from '@/lib/i18n';
 import { useAppStore } from '@/lib/store';
 import { TimeTrackerWidget } from '@/components/time-tracker-widget';
@@ -238,6 +240,7 @@ export function DashboardView() {
   const { t } = useTranslation();
   const { setCreateTaskDialogOpen, setCreateProjectDialogOpen, setActivePage, locale } = useAppStore();
   const { stats, tasks, projects, users, activities, meetings, isLoading, error, refetch, lastUpdated } = useDashboardData();
+  const { suggestions: smartSuggestions, isLoading: suggestionsLoading, refresh: refreshSuggestions } = useSmartSuggestions();
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
@@ -829,10 +832,104 @@ export function DashboardView() {
         </Card>
       </motion.div>
 
-      {/* ─── Time Tracker Widget ─────────────────────────────────────────── */}
+      {/* ─── Time Tracker Widget + Smart Suggestions ──────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-1">
           <TimeTrackerWidget />
+        </div>
+        <div className="lg:col-span-2">
+          {/* Smart Suggestions Card */}
+          <motion.div variants={item}>
+            <Card className="h-full overflow-hidden border shadow-md hover:shadow-lg transition-shadow duration-300 relative">
+              {/* Gradient Accent Background */}
+              <div className="absolute inset-0 bg-gradient-to-br from-[oklch(0.55_0.15_160/0.04)] via-[oklch(0.55_0.15_160/0.02)] to-transparent pointer-events-none" />
+              <CardHeader className="pb-3 relative">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-xl bg-[oklch(0.55_0.15_160/0.1)] border border-[oklch(0.55_0.15_160/0.15)]">
+                      <Sparkles className="h-4 w-4 text-[oklch(0.55_0.15_160)]" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-sm font-semibold">{t.dashboard.suggestionsTitle}</CardTitle>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">{t.dashboard.suggestionsDescription}</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs gap-1 hover:bg-[oklch(0.55_0.15_160/0.05)]"
+                    onClick={refreshSuggestions}
+                    disabled={suggestionsLoading}
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 ${suggestionsLoading ? 'animate-spin' : ''}`} />
+                    {t.dashboard.suggestionsRefresh}
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="relative px-4 pb-4">
+                {suggestionsLoading ? (
+                  <div className="space-y-3">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <motion.div
+                        key={i}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.05, duration: 0.25, ease: 'easeOut' }}
+                        className="flex items-start gap-3 p-3"
+                      >
+                        <div className="h-8 w-8 rounded-lg bg-muted/50 animate-pulse" />
+                        <div className="flex-1 space-y-2">
+                          <div className="h-4 w-2/3 rounded bg-muted/50 animate-pulse" />
+                          <div className="h-3 w-full rounded bg-muted/30 animate-pulse" />
+                        </div>
+                      </motion.div>
+                    ))}
+                    <p className="text-xs text-muted-foreground text-center pt-2">{t.dashboard.suggestionsLoading}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-[260px] overflow-y-auto">
+                    {smartSuggestions.map((suggestion: SmartSuggestion, idx: number) => (
+                      <motion.div
+                        key={suggestion.id}
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.05 + idx * 0.05, duration: 0.3, ease: 'easeOut' }}
+                        className="group flex items-start gap-3 p-3 rounded-xl border border-transparent hover:border-border hover:bg-muted/30 transition-all duration-200"
+                      >
+                        <div className="h-8 w-8 rounded-lg flex items-center justify-center text-base flex-shrink-0 bg-[oklch(0.55_0.15_160/0.08)] border border-[oklch(0.55_0.15_160/0.1)]">
+                          {suggestion.icon}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
+                            {suggestion.title}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">
+                            {suggestion.description}
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-[10px] px-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-[oklch(0.55_0.15_160/0.05)] text-[oklch(0.55_0.15_160)]"
+                          onClick={() => {
+                            switch (suggestion.actionType) {
+                              case 'create_task': setCreateTaskDialogOpen(true); break;
+                              case 'view_project': setActivePage('projects'); break;
+                              case 'schedule_meeting': setActivePage('meetings'); break;
+                              case 'review_task': setActivePage('tasks'); break;
+                              case 'check_deadline': setActivePage('tasks'); break;
+                            }
+                          }}
+                        >
+                          {suggestion.action}
+                        </Button>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
         </div>
       </div>
 

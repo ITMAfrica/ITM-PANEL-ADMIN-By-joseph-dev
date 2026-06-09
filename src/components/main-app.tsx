@@ -16,6 +16,7 @@ import { MembersView } from '@/components/views/members-view';
 import { TeamsView } from '@/components/views/teams-view';
 import { ReportsView } from '@/components/views/reports-view';
 import { AutomationsView } from '@/components/views/automations-view';
+import { ProgressBoard } from '@/components/views/progress-board';
 import { SettingsView } from '@/components/views/settings-view';
 import { TopBar } from '@/components/top-bar';
 import { NotificationPanel } from '@/components/notification-panel';
@@ -32,7 +33,7 @@ import { AiChatWidget } from '@/components/ai-chat-widget';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, ArrowUp, Plus, CheckSquare, FolderKanban, Video } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useSyncExternalStore } from 'react';
 import { PageTransition } from '@/components/page-transition';
 
 const viewMap: Record<string, React.ComponentType> = {
@@ -49,6 +50,7 @@ const viewMap: Record<string, React.ComponentType> = {
   teams: TeamsView,
   reports: ReportsView,
   automations: AutomationsView,
+  progress: ProgressBoard,
   settings: SettingsView,
 };
 
@@ -56,13 +58,31 @@ const viewMap: Record<string, React.ComponentType> = {
 
 function AppFooter() {
   const { t } = useTranslation();
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+  const [isOnline, setIsOnline] = useState(true);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   return (
     <footer className="relative bg-background/50 backdrop-blur-sm px-4 md:px-6 py-3 flex items-center justify-between text-xs text-muted-foreground">
       {/* Gradient top border */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[oklch(0.55_0.15_160/0.2)] to-transparent" />
       <div className="flex items-center gap-3">
         <span className="font-medium text-foreground/60">TeamFlow</span>
-        <span className="text-muted-foreground/40">v2.4.0</span>
+        <span className="text-muted-foreground/40">{t.footer.version}</span>
         <span className="hidden sm:inline text-muted-foreground/40">•</span>
         <span className="hidden sm:inline">{t.footer.rights}</span>
       </div>
@@ -70,6 +90,19 @@ function AppFooter() {
         <span className="hidden md:flex items-center gap-1">
           {t.footer.madeWith} <Heart className="h-3 w-3 text-rose-500 fill-rose-500" /> {t.footer.byTeam}
         </span>
+        <span className="hidden sm:flex items-center gap-1.5 text-muted-foreground/60">
+          <kbd className="bg-muted border border-border rounded px-1.5 py-0.5 text-[10px] font-mono">⌘K</kbd>
+          <span>{t.footer.searchHint?.replace('⌘K ', '') || 'Search'}</span>
+        </span>
+        {mounted && (
+          <span className="flex items-center gap-1.5">
+            <span className={cn(
+              'h-2 w-2 rounded-full',
+              isOnline ? 'bg-emerald-500' : 'bg-amber-500'
+            )} />
+            <span className="text-muted-foreground/60">{isOnline ? t.footer.online : 'Offline'}</span>
+          </span>
+        )}
         <button
           onClick={() => useAppStore.getState().setShortcutsHelpOpen(true)}
           className="flex items-center gap-1 hover:text-foreground/80 transition-colors"

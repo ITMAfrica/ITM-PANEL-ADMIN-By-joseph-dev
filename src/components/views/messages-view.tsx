@@ -637,12 +637,64 @@ export function MessagesView() {
                     </AnimatePresence>
                   </>
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                    <div className="h-16 w-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-3">
-                      <MessageSquare className="h-8 w-8 opacity-30" />
+                  <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                    {/* Animated chat bubble illustration */}
+                    <motion.div
+                      className="relative mb-6"
+                      animate={{ y: [0, -8, 0] }}
+                      transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                    >
+                      <div className="relative h-28 w-28">
+                        {/* Back bubble */}
+                        <div className="absolute top-2 right-0 h-18 w-20 rounded-2xl bg-[oklch(0.55_0.15_160)/0.08] border border-[oklch(0.55_0.15_160)/0.15] flex items-center justify-center">
+                          <div className="space-y-1.5 p-2">
+                            <div className="h-1.5 w-12 rounded-full bg-[oklch(0.55_0.15_160)/0.2]" />
+                            <div className="h-1.5 w-8 rounded-full bg-[oklch(0.55_0.15_160)/0.15]" />
+                            <div className="h-1.5 w-10 rounded-full bg-[oklch(0.55_0.15_160)/0.12]" />
+                          </div>
+                        </div>
+                        {/* Front bubble */}
+                        <div className="absolute bottom-0 left-0 h-18 w-22 rounded-2xl bg-[oklch(0.55_0.15_160)/0.12] border border-[oklch(0.55_0.15_160)/0.2] flex items-center justify-center shadow-md">
+                          <MessageSquare className="h-8 w-8 text-[oklch(0.55_0.15_160)/0.5]" />
+                        </div>
+                        {/* Floating dots */}
+                        <motion.div
+                          className="absolute -top-1 left-8 h-2 w-2 rounded-full bg-[oklch(0.55_0.15_160)/0.3]"
+                          animate={{ scale: [1, 1.3, 1], opacity: [0.3, 0.6, 0.3] }}
+                          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                        />
+                        <motion.div
+                          className="absolute top-6 -left-1 h-1.5 w-1.5 rounded-full bg-emerald-400/40"
+                          animate={{ scale: [1, 1.4, 1], opacity: [0.4, 0.7, 0.4] }}
+                          transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut', delay: 0.3 }}
+                        />
+                      </div>
+                    </motion.div>
+
+                    {/* Gradient heading */}
+                    <h3 className="text-lg font-bold bg-gradient-to-r from-[oklch(0.55_0.15_160)] to-emerald-500 bg-clip-text text-transparent mb-2">
+                      {t.messages.startConversation}
+                    </h3>
+                    <p className="text-xs text-muted-foreground/70 mb-5">{t.messages.noMessagesYet}</p>
+
+                    {/* Suggestion chips */}
+                    <div className="flex flex-wrap items-center justify-center gap-2">
+                      {[
+                        { key: 'sayHello', text: '👋 Say hello' },
+                        { key: 'shareUpdate', text: '📋 Share an update' },
+                        { key: 'askQuestion', text: '❓ Ask a question' },
+                      ].map((chip) => (
+                        <motion.button
+                          key={chip.key}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.97 }}
+                          onClick={() => setMessageInput(chip.text)}
+                          className="px-3 py-1.5 rounded-full text-xs font-medium bg-muted/50 border border-border/50 hover:bg-[oklch(0.55_0.15_160)/10] hover:border-[oklch(0.55_0.15_160)/30] transition-all duration-200"
+                        >
+                          {(t.messages as Record<string, string>)[chip.key] || chip.text}
+                        </motion.button>
+                      ))}
                     </div>
-                    <p className="text-sm font-medium">No messages yet</p>
-                    <p className="text-xs mt-1">Start the conversation!</p>
                   </div>
                 )}
                 <div ref={messagesEndRef} />

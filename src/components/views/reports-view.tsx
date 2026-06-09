@@ -1,8 +1,16 @@
 'use client';
 
+import { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   CheckSquare,
   TrendingUp,
@@ -17,6 +25,10 @@ import {
   Target,
   ChevronRight,
   Sparkles,
+  FileSpreadsheet,
+  FileJson,
+  Clipboard,
+  Check,
 } from 'lucide-react';
 import { mockTasks, mockProjects, mockUsers, mockTeams } from '@/lib/mock-data';
 import { useTranslation } from '@/lib/i18n';
@@ -37,6 +49,14 @@ import {
   Cell,
   Legend,
 } from 'recharts';
+import {
+  exportToCSV,
+  exportToJSON,
+  copyToClipboard,
+  formatTasksForExport,
+  formatProjectsForExport,
+  formatWorkloadForExport,
+} from '@/lib/export-utils';
 
 // ─── Animation ───────────────────────────────────────────────────────────────
 const container = {
@@ -64,9 +84,14 @@ const healthColors: Record<string, { bg: string; text: string; dot: string }> = 
   archived: { bg: 'bg-slate-500/10', text: 'text-slate-500', dot: 'bg-slate-300' },
 };
 
+// ─── Export Type ─────────────────────────────────────────────────────────────
+type ExportType = 'tasks' | 'projects' | 'workload';
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 export function ReportsView() {
   const { t } = useTranslation();
+  const [copiedType, setCopiedType] = useState<ExportType | null>(null);
+
   const totalTasks = mockTasks.length;
   const completedTasks = mockTasks.filter((task) => task.status === 'done').length;
   const completionRate = Math.round((completedTasks / totalTasks) * 100);
@@ -101,6 +126,48 @@ export function ReportsView() {
       return acc + mockTasks.filter((tk) => tk.projectId === pid && tk.status === 'done').length;
     }, 0),
   }));
+
+  // ─── Export Handlers ─────────────────────────────────────────────────────
+  const getExportData = useCallback((type: ExportType) => {
+    switch (type) {
+      case 'tasks':
+        return formatTasksForExport(
+          mockTasks.map((task) => ({
+            ...task,
+            assigneeName: mockUsers.find((u) => u.id === task.assigneeId)?.name ?? 'Unassigned',
+            projectName: mockProjects.find((p) => p.id === task.projectId)?.name ?? '',
+          }))
+        );
+      case 'projects':
+        return formatProjectsForExport(
+          mockProjects.map((p) => ({
+            ...p,
+            membersCount: p.members.length,
+          }))
+        );
+      case 'workload':
+        return formatWorkloadForExport(workloadData as unknown as Array<Record<string, unknown>>);
+    }
+  }, [workloadData]);
+
+  const handleExportCSV = useCallback((type: ExportType) => {
+    const data = getExportData(type);
+    exportToCSV(data, `teamflow-${type}-${new Date().toISOString().split('T')[0]}`);
+  }, [getExportData]);
+
+  const handleExportJSON = useCallback((type: ExportType) => {
+    const data = getExportData(type);
+    exportToJSON(data, `teamflow-${type}-${new Date().toISOString().split('T')[0]}`);
+  }, [getExportData]);
+
+  const handleCopyToClipboard = useCallback(async (type: ExportType) => {
+    const data = getExportData(type);
+    const success = await copyToClipboard(data, 'csv');
+    if (success) {
+      setCopiedType(type);
+      setTimeout(() => setCopiedType(null), 2000);
+    }
+  }, [getExportData]);
 
   const stats = [
     {
@@ -163,12 +230,84 @@ export function ReportsView() {
           <h2 className="text-xl font-bold tracking-tight">{t.reports.title}</h2>
           <p className="text-sm text-muted-foreground mt-0.5">{t.reports.subtitle}</p>
         </div>
-        <Button
-          size="sm"
-          className="gap-1.5 bg-gradient-to-r from-[oklch(0.55_0.15_160)] to-[oklch(0.50_0.15_165)] hover:from-[oklch(0.50_0.15_160)] hover:to-[oklch(0.45_0.15_165)] shadow-sm shadow-[oklch(0.55_0.15_160/0.2)] text-white"
-        >
-          <Download className="h-4 w-4" /> {t.reports.exportReport}
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              size="sm"
+              className="gap-1.5 bg-gradient-to-r from-[oklch(0.55_0.15_160)] to-[oklch(0.50_0.15_165)] hover:from-[oklch(0.50_0.15_160)] hover:to-[oklch(0.45_0.15_165)] shadow-sm shadow-[oklch(0.55_0.15_160/0.2)] text-white"
+            >
+              <Download className="h-4 w-4" /> {t.reports.exportReport}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-64">
+            {/* ─── Tasks Export ──────────────────────────────────────────── */}
+            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+              {t.reports.exportTasks}
+            </div>
+            <DropdownMenuItem onClick={() => handleExportCSV('tasks')} className="gap-2 cursor-pointer">
+              <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+              <span>{t.reports.exportAsCSV}</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExportJSON('tasks')} className="gap-2 cursor-pointer">
+              <FileJson className="h-4 w-4 text-amber-600" />
+              <span>{t.reports.exportAsJSON}</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleCopyToClipboard('tasks')} className="gap-2 cursor-pointer">
+              {copiedType === 'tasks' ? (
+                <Check className="h-4 w-4 text-emerald-600" />
+              ) : (
+                <Clipboard className="h-4 w-4 text-muted-foreground" />
+              )}
+              <span>{copiedType === 'tasks' ? t.reports.copied : t.reports.copyToClipboard}</span>
+            </DropdownMenuItem>
+
+            <DropdownMenuSeparator />
+
+            {/* ─── Projects Export ───────────────────────────────────────── */}
+            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+              {t.reports.exportProjects}
+            </div>
+            <DropdownMenuItem onClick={() => handleExportCSV('projects')} className="gap-2 cursor-pointer">
+              <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+              <span>{t.reports.exportAsCSV}</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExportJSON('projects')} className="gap-2 cursor-pointer">
+              <FileJson className="h-4 w-4 text-amber-600" />
+              <span>{t.reports.exportAsJSON}</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleCopyToClipboard('projects')} className="gap-2 cursor-pointer">
+              {copiedType === 'projects' ? (
+                <Check className="h-4 w-4 text-emerald-600" />
+              ) : (
+                <Clipboard className="h-4 w-4 text-muted-foreground" />
+              )}
+              <span>{copiedType === 'projects' ? t.reports.copied : t.reports.copyToClipboard}</span>
+            </DropdownMenuItem>
+
+            <DropdownMenuSeparator />
+
+            {/* ─── Workload Export ───────────────────────────────────────── */}
+            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+              {t.reports.exportWorkload}
+            </div>
+            <DropdownMenuItem onClick={() => handleExportCSV('workload')} className="gap-2 cursor-pointer">
+              <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+              <span>{t.reports.exportAsCSV}</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExportJSON('workload')} className="gap-2 cursor-pointer">
+              <FileJson className="h-4 w-4 text-amber-600" />
+              <span>{t.reports.exportAsJSON}</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleCopyToClipboard('workload')} className="gap-2 cursor-pointer">
+              {copiedType === 'workload' ? (
+                <Check className="h-4 w-4 text-emerald-600" />
+              ) : (
+                <Clipboard className="h-4 w-4 text-muted-foreground" />
+              )}
+              <span>{copiedType === 'workload' ? t.reports.copied : t.reports.copyToClipboard}</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* ─── Summary Stats ───────────────────────────────────────────────── */}

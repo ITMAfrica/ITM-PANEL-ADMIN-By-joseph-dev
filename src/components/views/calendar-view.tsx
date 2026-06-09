@@ -23,7 +23,7 @@ import {
   Plus,
   Crosshair,
 } from 'lucide-react';
-import { mockCalendarEvents, mockProjects } from '@/lib/mock-data';
+import { mockCalendarEvents, mockProjects, mockTasks } from '@/lib/mock-data';
 import type { CalendarEvent } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -134,6 +134,8 @@ function CalendarDayCell({
   onDragOver: (day: Date) => void;
 }) {
   const eventTypes = [...new Set(events.map((e) => e.type))];
+  // Simple weather mapping: Mon=☀️, Tue=⛅, Wed=🌧️, Thu=☀️, Fri=⛅, Sat=☀️, Sun=⛅
+  const weatherMap: Record<number, string> = { 1: '☀️', 2: '⛅', 3: '🌧️', 4: '☀️', 5: '⛅', 6: '☀️', 0: '⛅' };
 
   return (
     <button
@@ -160,6 +162,11 @@ function CalendarDayCell({
       >
         {format(day, 'd')}
       </span>
+
+      {/* Weather icon next to today's date */}
+      {isTodayDate && (
+        <span className="text-[10px] mt-0.5 leading-none">{weatherMap[day.getDay()]}</span>
+      )}
 
       {/* Event dots with hover tooltips */}
       {eventTypes.length > 0 && (
@@ -207,7 +214,16 @@ function EventCard({ event }: { event: CalendarEvent }) {
         'group p-3 rounded-xl border-l-[3px] bg-card hover:shadow-md transition-all duration-200 cursor-pointer border border-l-0 dark-card-glow',
         'hover:translate-x-0.5',
       )}>
-        <div className={cn('absolute left-0 top-0 bottom-0 w-[3px] rounded-l-xl', config.dotColor)} />
+        <div className={cn('absolute left-0 top-0 bottom-0 w-[3px] rounded-l-xl transition-all duration-500 group-hover:shadow-[0_0_8px_2px]', config.dotColor)} />
+        <style>{`
+          .event-card-pulse:hover .absolute.left-0 {
+            animation: border-pulse 1.5s ease-in-out infinite;
+          }
+          @keyframes border-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+          }
+        `}</style>
         <div className="flex items-start gap-3">
           <div
             className={cn(
@@ -507,7 +523,7 @@ export function CalendarView() {
                   variants={container}
                   initial="hidden"
                   animate="show"
-                  className="space-y-2.5 max-h-[calc(100vh-320px)] overflow-y-auto"
+                  className="space-y-2.5 max-h-[calc(100vh-480px)] overflow-y-auto"
                 >
                   {selectedDayEvents.map((event) => (
                     <EventCard key={event.id} event={event} />
@@ -515,6 +531,55 @@ export function CalendarView() {
                 </motion.div>
               )}
             </AnimatePresence>
+
+            {/* Upcoming Deadlines Mini-List */}
+            <Separator className="my-3" />
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
+                <Flag className="h-3 w-3 text-rose-500" />
+                {t.calendar.upcomingDeadlines}
+              </h4>
+              <div className="space-y-1.5">
+                {mockTasks
+                  .filter((task) => task.dueDate && task.status !== 'done')
+                  .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())
+                  .slice(0, 3)
+                  .map((task) => {
+                    const project = mockProjects.find((p) => p.id === task.projectId);
+                    const dueDate = new Date(task.dueDate!);
+                    const now = new Date();
+                    const daysUntil = Math.ceil((dueDate.getTime() - now.getTime()) / 86400000);
+                    const isOverdue = daysUntil < 0;
+                    const isSoon = daysUntil >= 0 && daysUntil <= 3;
+                    return (
+                      <div
+                        key={task.id}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-muted/30 transition-colors text-xs"
+                      >
+                        <span
+                          className={cn(
+                            'h-1.5 w-1.5 rounded-full shrink-0',
+                            isOverdue ? 'bg-rose-500' : isSoon ? 'bg-amber-500' : 'bg-emerald-500'
+                          )}
+                        />
+                        <span className="truncate flex-1 font-medium">{task.title}</span>
+                        <span className={cn(
+                          'text-[10px] shrink-0',
+                          isOverdue ? 'text-rose-500 font-semibold' : isSoon ? 'text-amber-600' : 'text-muted-foreground'
+                        )}>
+                          {isOverdue ? `${Math.abs(daysUntil)}d overdue` : daysUntil === 0 ? 'Today' : daysUntil === 1 ? 'Tomorrow' : `${daysUntil}d`}
+                        </span>
+                        {project && (
+                          <span
+                            className="h-2 w-2 rounded-full shrink-0"
+                            style={{ backgroundColor: project.color }}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
