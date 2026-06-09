@@ -16,6 +16,7 @@ import {
   MessageSquare,
   Activity,
   BarChart3,
+  PieChart as PieChartIcon,
   ChevronRight,
   Plus,
   UserPlus,
@@ -46,7 +47,7 @@ import {
 import { useTranslation } from '@/lib/i18n';
 import { useAppStore } from '@/lib/store';
 import { motion, useSpring, useTransform, AnimatePresence } from 'framer-motion';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, PieChart as RechartsPieChart, Pie, Cell } from 'recharts';
 
 // ─── Animated Counter ────────────────────────────────────────────────────────
 function AnimatedCounter({ value, duration = 1200 }: { value: number; duration?: number }) {
@@ -201,6 +202,16 @@ export function DashboardView() {
     return Math.round((total / withRates.length) * 10) / 10;
   }, [activeTenantId]);
 
+  const totalViews = useMemo(
+    () => allContent.reduce((sum, c) => sum + (c.viewCount || 0), 0),
+    [allContent]
+  );
+
+  const draftsCount = useMemo(
+    () => allContent.filter((c) => c.status === 'draft').length,
+    [allContent]
+  );
+
   // ─── Chart Data: Publication Activity per Day of Week ──────────────────
   const publicationActivityData = useMemo(() => {
     const tenantLogs = mockAuditLogs.filter(
@@ -301,6 +312,36 @@ export function DashboardView() {
       }));
   }, [activeTenantId]);
 
+  // ─── Chart Data: Content Type Distribution ─────────────────────────────
+  const contentTypeData = useMemo(() => {
+    const tenantNewsletters = mockNewsletters.filter((n) => n.tenantId === activeTenantId);
+    const tenantArticles = mockArticles.filter((a) => a.tenantId === activeTenantId);
+    const tenantAnnouncements = mockAnnouncements.filter((a) => a.tenantId === activeTenantId);
+    return [
+      { name: t.dashboard.newsletters, value: tenantNewsletters.length, color: '#14b8a6' },
+      { name: t.dashboard.articles, value: tenantArticles.length, color: '#10b981' },
+      { name: t.dashboard.announcements, value: tenantAnnouncements.length, color: '#f59e0b' },
+    ].filter((d) => d.value > 0);
+  }, [activeTenantId, t]);
+
+  // ─── Editorial Pipeline Counts ────────────────────────────────────────────
+  const pipelineCounts = useMemo(() => {
+    const statuses = ['draft', 'review', 'approved', 'scheduled', 'published', 'archived'] as const;
+    return statuses.map((status) => ({
+      status,
+      count: allContent.filter((c) => c.status === status).length,
+    }));
+  }, [allContent]);
+
+  const pipelineColors: Record<string, { dot: string; bg: string; text: string }> = {
+    draft: { dot: 'bg-slate-400', bg: 'bg-slate-500/10', text: 'text-slate-600' },
+    review: { dot: 'bg-amber-400', bg: 'bg-amber-500/10', text: 'text-amber-600' },
+    approved: { dot: 'bg-cyan-400', bg: 'bg-cyan-500/10', text: 'text-cyan-600' },
+    scheduled: { dot: 'bg-violet-400', bg: 'bg-violet-500/10', text: 'text-violet-600' },
+    published: { dot: 'bg-emerald-400', bg: 'bg-emerald-500/10', text: 'text-emerald-600' },
+    archived: { dot: 'bg-slate-400', bg: 'bg-slate-500/10', text: 'text-slate-500' },
+  };
+
   // ─── Stats Config ──────────────────────────────────────────────────────
   const statsConfig = [
     {
@@ -351,6 +392,30 @@ export function DashboardView() {
       iconColor: 'text-teal-600',
       borderAccent: 'border-teal-500/20',
       glowColor: 'shadow-teal-500/5',
+    },
+    {
+      title: t.dashboard.totalViews, // "Total des vues"
+      value: totalViews,
+      change: '+18%',
+      trend: 'up' as const,
+      icon: Eye,
+      gradient: 'from-amber-500/10 via-amber-500/5 to-transparent',
+      iconBg: 'bg-amber-500/15',
+      iconColor: 'text-amber-600',
+      borderAccent: 'border-amber-500/20',
+      glowColor: 'shadow-amber-500/5',
+    },
+    {
+      title: t.dashboard.drafts, // "Brouillons"
+      value: draftsCount,
+      change: '-3',
+      trend: 'down' as const,
+      icon: Edit3,
+      gradient: 'from-rose-500/10 via-rose-500/5 to-transparent',
+      iconBg: 'bg-rose-500/15',
+      iconColor: 'text-rose-600',
+      borderAccent: 'border-rose-500/20',
+      glowColor: 'shadow-rose-500/5',
     },
   ];
 
@@ -432,7 +497,7 @@ export function DashboardView() {
       </motion.div>
 
       {/* ─── Stats Grid ──────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5">
         {statsConfig.map((stat, i) => {
           const IconComp = stat.icon;
           return (
@@ -451,7 +516,7 @@ export function DashboardView() {
                     className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-60 group-hover:opacity-100 transition-opacity duration-500`}
                   />
                   {/* Decorative Circle */}
-                  <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-gradient-to-br from-current/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ color: stat.iconColor.includes('emerald') ? '#10b981' : stat.iconColor.includes('amber') ? '#f59e0b' : stat.iconColor.includes('cyan') ? '#06b6d4' : '#14b8a6' }} />
+                  <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-gradient-to-br from-current/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ color: stat.iconColor.includes('emerald') ? '#10b981' : stat.iconColor.includes('amber') ? '#f59e0b' : stat.iconColor.includes('cyan') ? '#06b6d4' : stat.iconColor.includes('rose') ? '#f43f5e' : '#14b8a6' }} />
 
                   <CardContent className="relative p-5">
                     <div className="flex items-start justify-between">
@@ -503,7 +568,7 @@ export function DashboardView() {
       </div>
 
       {/* ─── Charts Section ──────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Publication Activity Bar Chart */}
         <motion.div variants={item}>
           <Card className="overflow-hidden border shadow-md hover:shadow-lg transition-shadow duration-300">
@@ -529,7 +594,7 @@ export function DashboardView() {
             <CardContent>
               <div className="h-[220px] mt-1">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={publicationActivityData} barGap={4}>
+                  <RechartsBarChart data={publicationActivityData} barGap={4}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                     <XAxis
                       dataKey="name"
@@ -553,7 +618,7 @@ export function DashboardView() {
                     />
                     <Bar dataKey="published" fill="oklch(0.55 0.15 160)" radius={[6, 6, 0, 0]} maxBarSize={28} name={locale === 'fr' ? 'Publiés' : 'Published'} />
                     <Bar dataKey="scheduled" fill="oklch(0.65 0.15 80 / 0.5)" radius={[6, 6, 0, 0]} maxBarSize={28} name={locale === 'fr' ? 'Planifiés' : 'Scheduled'} />
-                  </BarChart>
+                  </RechartsBarChart>
                 </ResponsiveContainer>
               </div>
             </CardContent>
@@ -635,7 +700,122 @@ export function DashboardView() {
             </CardContent>
           </Card>
         </motion.div>
+
+        {/* Content Type Distribution Pie Chart */}
+        <motion.div variants={item}>
+          <Card className="overflow-hidden border shadow-md hover:shadow-lg transition-shadow duration-300">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-teal-500/10 border border-teal-500/15">
+                    <PieChartIcon className="h-4 w-4 text-teal-600" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-sm font-semibold">{t.dashboard.contentTypeBreakdown}</CardTitle>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      {locale === 'fr' ? 'Répartition des contenus par type' : 'Content breakdown by type'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[160px] mt-1">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsPieChart>
+                    <Pie
+                      data={contentTypeData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={40}
+                      outerRadius={65}
+                      paddingAngle={4}
+                      dataKey="value"
+                      strokeWidth={0}
+                    >
+                      {contentTypeData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'var(--popover)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '12px',
+                        fontSize: '12px',
+                        boxShadow: '0 8px 30px rgba(0,0,0,0.08)',
+                        padding: '10px 14px',
+                      }}
+                      formatter={(value: number) => [value, '']}
+                    />
+                  </RechartsPieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex items-center justify-center gap-4 mt-2">
+                {contentTypeData.map((entry, idx) => {
+                  const total = contentTypeData.reduce((sum, d) => sum + d.value, 0);
+                  const pct = total > 0 ? Math.round((entry.value / total) * 100) : 0;
+                  return (
+                    <div key={idx} className="flex items-center gap-1.5">
+                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: entry.color }} />
+                      <span className="text-[11px] text-muted-foreground">{entry.name}</span>
+                      <span className="text-[11px] font-semibold">{entry.value}</span>
+                      <span className="text-[10px] text-muted-foreground/60">({pct}%)</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
+
+      {/* ─── Editorial Workflow Pipeline ─────────────────────────────────── */}
+      <motion.div variants={item}>
+        <Card className="overflow-hidden border shadow-md hover:shadow-lg transition-shadow duration-300">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-[oklch(0.55_0.15_160/0.1)] border border-[oklch(0.55_0.15_160/0.15)]">
+                  <Activity className="h-4 w-4 text-[oklch(0.55_0.15_160)]" />
+                </div>
+                <CardTitle className="text-sm font-semibold">{t.dashboard.editorialPipeline}</CardTitle>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <div className="flex items-center justify-between gap-2 overflow-x-auto py-2">
+              {pipelineCounts.map((stage, idx) => {
+                const colors = pipelineColors[stage.status] || pipelineColors.draft;
+                const statusLabels = contentStatusLabels[locale] || contentStatusLabels.fr;
+                return (
+                  <div key={stage.status} className="flex items-center gap-2">
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.1 + idx * 0.08, duration: 0.3 }}
+                      className="flex flex-col items-center gap-1.5 min-w-[80px]"
+                    >
+                      <div className={`w-10 h-10 rounded-full ${colors.bg} border border-current/10 flex items-center justify-center`}>
+                        <span className={`text-sm font-bold ${colors.text}`}>
+                          <AnimatedCounter value={stage.count} />
+                        </span>
+                      </div>
+                      <div className={`w-3 h-3 rounded-full ${colors.dot} ring-2 ring-background`} />
+                      <span className="text-[11px] font-medium text-muted-foreground text-center leading-tight">
+                        {statusLabels[stage.status] || stage.status}
+                      </span>
+                    </motion.div>
+                    {idx < pipelineCounts.length - 1 && (
+                      <div className="flex-shrink-0 w-6 h-0.5 bg-border/60 rounded-full mt-[-20px]" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
 
       {/* ─── Recent Activity + Upcoming ──────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">

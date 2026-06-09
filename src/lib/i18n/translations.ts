@@ -162,6 +162,13 @@ export const translations = {
       suggestionsActionScheduleMeeting: 'Planifier envoi',
       suggestionsActionReviewTask: 'Réviser le contenu',
       suggestionsActionCheckDeadline: 'Vérifier l\'échéance',
+      totalViews: 'Total des vues',
+      drafts: 'Brouillons',
+      editorialPipeline: 'Pipeline éditorial',
+      contentTypeBreakdown: 'Répartition par type',
+      newsletters: 'Newsletters',
+      articles: 'Articles',
+      announcements: 'Annonces',
     },
 
     // Newsletters
@@ -1001,6 +1008,13 @@ export const translations = {
       suggestionsActionScheduleMeeting: 'Schedule Send',
       suggestionsActionReviewTask: 'Review Content',
       suggestionsActionCheckDeadline: 'Check Deadline',
+      totalViews: 'Total Views',
+      drafts: 'Drafts',
+      editorialPipeline: 'Editorial Pipeline',
+      contentTypeBreakdown: 'Content Type Breakdown',
+      newsletters: 'Newsletters',
+      articles: 'Articles',
+      announcements: 'Announcements',
     },
 
     // Newsletters

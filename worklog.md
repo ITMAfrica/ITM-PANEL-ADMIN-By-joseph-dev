@@ -1720,3 +1720,75 @@ Unresolved Issues / Next Steps:
 5. Search dialog needs update to search CMS content types
 6. Real-time notifications via WebSocket for content workflow events
 7. Mobile responsive fine-tuning for all new views
+
+---
+Task ID: 1-dashboard-enhance
+Agent: main
+Task: Enhance dashboard view with 2 new stat cards, Editorial Workflow Pipeline, Content Type Distribution chart, and i18n updates
+
+Work Log:
+
+**1. i18n Translations** (`src/lib/i18n/translations.ts`):
+- Added to FR dashboard section: `totalViews: 'Total des vues'`, `drafts: 'Brouillons'`, `editorialPipeline: 'Pipeline éditorial'`, `contentTypeBreakdown: 'Répartition par type'`, `newsletters: 'Newsletters'`, `articles: 'Articles'`, `announcements: 'Annonces'`
+- Added to EN dashboard section: `totalViews: 'Total Views'`, `drafts: 'Drafts'`, `editorialPipeline: 'Editorial Pipeline'`, `contentTypeBreakdown: 'Content Type Breakdown'`, `newsletters: 'Newsletters'`, `articles: 'Articles'`, `announcements: 'Announcements'`
+
+**2. Two New Stat Cards** (`src/components/views/dashboard-view.tsx`):
+- Added `totalViews` computed value: sum of all viewCount from tenant content using `allContent.reduce()`
+- Added `draftsCount` computed value: count of content with status='draft' using `allContent.filter()`
+- Added "Total des vues" stat card: Eye icon, amber color scheme (`from-amber-500/10`, `text-amber-600`, etc.), +18% trend
+- Added "Brouillons" stat card: Edit3 icon (to differentiate from FileText), rose color scheme (`from-rose-500/10`, `text-rose-600`, etc.), -3 trend
+- Updated stats grid from `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4` to `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5`
+- Updated decorative circle color mapping to handle rose color (`#f43f5e`)
+
+**3. Content Type Distribution Pie Chart**:
+- Added `contentTypeData` useMemo: computes breakdown of content by type (newsletters, articles, announcements) filtered by activeTenantId
+- Colors: newsletter=teal (#14b8a6), article=emerald (#10b981), announcement=amber (#f59e0b)
+- Changed Charts section grid from `lg:grid-cols-2` to `lg:grid-cols-3` for 3-column layout
+- Added new PieChart card with donut chart (innerRadius=40, outerRadius=65, paddingAngle=4)
+- Uses recharts PieChart/Pie/Cell components
+- Shows count and percentage for each type below the chart
+- Uses PieChartIcon from lucide-react in the card header (renamed import to avoid conflict with recharts PieChart)
+- Renamed recharts imports: `BarChart as RechartsBarChart`, `PieChart as RechartsPieChart`
+
+**4. Editorial Workflow Pipeline Section**:
+- Added between Charts section and Recent Activity + Upcoming section
+- Horizontal pipeline visualization: Brouillon → Révision → Validation → Planification → Publication → Archivage
+- Each stage shows: count in colored circle, colored dot indicator, status label
+- Stage colors: draft=slate, review=amber, approved=cyan, scheduled=violet, published=emerald, archived=slate
+- Uses AnimatedCounter for animated count display
+- Connecting lines between stages (0.5px bg-border/60 horizontal bars)
+- Staggered entrance animations (0.08s delay between stages)
+- Responsive: overflow-x-auto for mobile, flex layout with gap-2
+
+Stage Summary:
+- Dashboard expanded from 4 to 6 stat cards with proper 6-column grid
+- New Content Type Distribution donut chart added (3-column charts grid)
+- New Editorial Workflow Pipeline section with animated counts
+- All i18n translations added for FR and EN
+- 0 lint errors
+
+---
+Task ID: 13
+Agent: main
+Task: Update Dashboard for CMS context, QA testing, and create cron review task
+
+Work Log:
+- Read existing dashboard-view.tsx — already had CMS-appropriate i18n labels (Contenus publiés, Campagnes actives, etc.)
+- Delegated dashboard enhancement to full-stack-developer subagent
+- Subagent added: 2 new stat cards (Total des vues, Brouillons), editorial workflow pipeline visualization, content type distribution pie chart
+- Subagent updated i18n translations for new dashboard sections
+- Ran `bun run lint` — 0 errors
+- QA testing with agent-browser:
+  - Login page renders correctly with French i18n
+  - Login via JS click works properly
+  - Dashboard renders with: welcome greeting, 6 stat cards, 3 charts (publication activity, campaign progress, content type distribution), editorial pipeline, recent activity, upcoming section, campaign progress
+  - Tested navigation to: Newsletters, Articles, Statistics, Users, Campaigns, Editorial Calendar, Roles, Audit — all render correctly
+  - No console errors at any point
+  - Mobile viewport tested — responsive layout works
+  - Footer sticky at bottom confirmed
+
+Stage Summary:
+- Dashboard fully updated for CMS context with 6 stats, editorial pipeline, content type distribution
+- All 20+ views render correctly with no errors
+- ContentFlow CMS app is fully functional
+- 0 lint errors, 0 runtime errors
