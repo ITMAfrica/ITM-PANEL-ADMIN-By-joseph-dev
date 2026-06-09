@@ -2315,3 +2315,47 @@ Stage Summary:
 - All text, icons, and badges clearly visible on light background
 - Dark mode unaffected (stays dark sidebar)
 - 0 lint errors, no regressions
+
+---
+Task ID: 13
+Agent: main
+Task: Comprehensive backend verification and E2E testing
+
+Work Log:
+- Verified dev server running on port 3000 with no errors in logs
+- Verified chat service running on port 3003 (socket.io polling endpoint responding)
+- Tested all REST API endpoints:
+  - GET /api/tasks → 200 (11 tasks)
+  - GET /api/projects → 200 (9 projects)
+  - GET /api/workspaces → 200 (1 workspace)
+  - GET /api/users → 200 (8 users)
+  - GET /api/messages → 200 (9 messages)
+  - POST /api/tasks → 201 (task creation works)
+  - POST /api/projects → 201 (project creation works)
+  - POST /api/messages → 201 (message creation works)
+  - POST /api/seed → 200 (re-seeding works)
+  - GET /api/export?type=tasks&format=json → 200 (11 tasks exported)
+  - GET /api/export?type=projects&format=csv → 200
+  - GET /api/export?type=workload&format=json → 200 (4 teams)
+- Tested CRUD from browser via agent-browser:
+  - Tasks API: 11 tasks returned
+  - Projects API: 9 projects returned
+  - Workspaces API: 1 workspace returned
+  - Users API: 8 users returned
+  - Messages API: 9 messages returned
+  - Task creation from browser: success (created task with ID)
+  - Export API from browser: success (11 tasks exported)
+- Logged into app via agent-browser with React nativeInputValueSetter
+- Verified dashboard renders correctly after login with VLM analysis
+- Verified sidebar navigation works (Dashboard, Newsletters, Campagnes, Utilisateurs)
+- Verified main content area shows proper data (metrics, charts, action buttons)
+- Lint passes with 0 errors
+- No runtime errors in dev server logs
+
+Stage Summary:
+- **ALL backend APIs are fully functional**: 7 endpoints (tasks, projects, workspaces, users, messages, seed, export) all returning 200/201
+- **Database (Prisma + SQLite) working perfectly**: CRUD operations succeed, data persists
+- **Chat service (WebSocket) running on port 3003**: Socket.io polling endpoint responding
+- **Frontend-backend integration verified from browser**: API calls succeed, data displays correctly
+- **0 lint errors, 0 compilation errors, 0 runtime errors**
+- **E2E testing via agent-browser confirms**: Login works, dashboard renders, sidebar navigation works, API calls from browser succeed
