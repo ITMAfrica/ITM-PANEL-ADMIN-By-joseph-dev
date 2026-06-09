@@ -66,6 +66,10 @@ interface AppState {
   setFocusMode: (focus: boolean) => void;
   toggleFocusMode: () => void;
 
+  // Create workspace dialog
+  createWorkspaceDialogOpen: boolean;
+  setCreateWorkspaceDialogOpen: (open: boolean) => void;
+  addWorkspace: (workspace: { id: string; name: string; slug: string; color: string; icon: string }) => void;
 
   // i18n / Locale
   locale: Locale;
@@ -288,6 +292,12 @@ export const useAppStore = create<AppState>((set) => ({
   setFocusMode: (focus) => set({ focusMode: focus }),
   toggleFocusMode: () => set((s) => ({ focusMode: !s.focusMode })),
 
+  // Create workspace dialog
+  createWorkspaceDialogOpen: false,
+  setCreateWorkspaceDialogOpen: (open) => set({ createWorkspaceDialogOpen: open }),
+  addWorkspace: (workspace) => set((s) => ({
+    tenants: [...s.tenants, { ...workspace, type: 'brand', country: 'France', memberCount: 1, contentCount: 0, isActive: true, createdAt: new Date().toISOString() } as Tenant],
+  })),
 
   // i18n / Locale
   locale: 'fr',
