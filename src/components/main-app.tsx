@@ -7,27 +7,25 @@ import { DashboardView } from '@/components/views/dashboard-view';
 import { AutomationsView } from '@/components/views/automations-view';
 import { ReportsView } from '@/components/views/reports-view';
 import { SettingsView } from '@/components/views/settings-view';
-import {
-  NewslettersView,
-  ArticlesView,
-  AnnouncementsView,
-  CampaignsView,
-  EditorialCalendarView,
-  LibraryView,
-  MediaView,
-  TemplatesView,
-  DraftsView,
-  PublishedView,
-  ArchiveView,
-  SchedulingView,
-  PublishingView,
-  ChannelsView,
-  StatisticsView,
-  UsersView,
-  RolesView,
-  TenantsView,
-  AuditView,
-} from '@/components/views/stubs';
+import { NewslettersView } from '@/components/views/newsletters-view';
+import { ArticlesView } from '@/components/views/articles-view';
+import { AnnouncementsView } from '@/components/views/announcements-view';
+import { CampaignsView } from '@/components/views/campaigns-view';
+import { EditorialCalendarView } from '@/components/views/editorial-calendar-view';
+import { LibraryView } from '@/components/views/library-view';
+import { MediaView } from '@/components/views/media-view';
+import { TemplatesView } from '@/components/views/templates-view';
+import { DraftsView } from '@/components/views/drafts-view';
+import { PublishedView } from '@/components/views/published-view';
+import { ArchiveView } from '@/components/views/archive-view';
+import { SchedulingView } from '@/components/views/scheduling-view';
+import { PublishingView } from '@/components/views/publishing-view';
+import { ChannelsView } from '@/components/views/channels-view';
+import { StatisticsView } from '@/components/views/statistics-view';
+import { UsersView } from '@/components/views/users-view';
+import { RolesView } from '@/components/views/roles-view';
+import { TenantsView } from '@/components/views/tenants-view';
+import { AuditView } from '@/components/views/audit-view';
 import { TopBar } from '@/components/top-bar';
 import { NotificationPanel } from '@/components/notification-panel';
 import { CreateWorkspaceDialog } from '@/components/create-workspace-dialog';
