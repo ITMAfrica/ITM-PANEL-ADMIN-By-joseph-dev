@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx prisma validate
+
+      - run: npm run lint
+
+      - run: npx tsc -p server/tsconfig.json --noEmit
+
+      - run: npm run build
+        env:
+          DATABASE_URL: postgresql://itm:itm_password@localhost:5432/itm_panel
+          AUTH_SECRET: ci-build-secret-minimum-32-characters-long
+          PUBLIC_API_KEY: ci-api-key
+          NEXT_PUBLIC_APP_URL: http://localhost:3002
+          APP_URL: http://localhost:3002
+          NEXT_PUBLIC_API_URL: http://localhost:3001/api

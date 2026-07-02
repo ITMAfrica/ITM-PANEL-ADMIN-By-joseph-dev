@@ -1,0 +1,28 @@
+---
+description: Workflow Docker — ne pas recommander npm pour la base ni le backend
+alwaysApply: true
+---
+
+# Workflow Docker
+
+Ce projet utilise **Docker Compose** pour Postgres et l'API. Ne jamais recommander `npm run` pour la base de données, Prisma ou le backend.
+
+## Commandes à utiliser
+
+| Action | Commande |
+|--------|----------|
+| Démarrer tout (frontend + Docker) | `bash scripts/dev.sh` |
+| Premier setup (migrations) | `bash scripts/dev.sh --setup` |
+| Arrêter Docker | `docker compose down` |
+| Logs API | `docker compose logs -f api` |
+| Prisma generate | `bash scripts/db.sh generate` |
+| Prisma push | `bash scripts/db.sh push` |
+| Prisma migrate | `bash scripts/db.sh migrate` |
+| Reset base | `bash scripts/db.sh reset` |
+| Prisma direct (si besoin) | `docker compose exec api npx prisma <cmd>` |
+
+## Règles
+
+- Prisma s'exécute **dans le conteneur `api`**, pas sur l'hôte.
+- Le frontend Next.js tourne sur l'hôte (`npx next dev -p 3002`), lancé par `scripts/dev.sh`.
+- Ne pas suggérer `npm run db:*`, `npm run dev:server` ni `prisma` en local hors Docker.

@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Build
+.next/
+dist/
+out/
+build/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Prisma
+prisma/*.db
+prisma/*.db-journal
+
+# Misc
+.turbo/
+coverage/
+*.tsbuildinfo
+
+# Uploaded media (keep directory via .gitkeep)
+uploads/*
+!uploads/.gitkeep
