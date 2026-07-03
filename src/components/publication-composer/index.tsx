@@ -11,7 +11,6 @@ import { useTranslation } from '@/lib/i18n';
 import {
   DEFAULT_PUBLICATION_COMPOSER_TYPE,
   FACEBOOK_CHAR_LIMIT,
-  getPageForType,
   isCmsType,
   isComposerScheduledAtValid,
   parseComposerScheduledAt,
@@ -29,6 +28,8 @@ import { useCreateContent } from '@/hooks/use-content';
 
 const DEFAULT_PROFILE_NAME = 'Agriculture 243';
 
+type CmsComposerType = Exclude<PublicationComposerType, 'social'>;
+
 const emptyCmsForm = (): CmsFormState => ({
   title: '',
   summary: '',
@@ -40,6 +41,13 @@ const emptyCmsForm = (): CmsFormState => ({
   emailSubject: '',
   urgency: 'info',
   category: '',
+});
+
+const emptyCmsFormsByType = (): Record<CmsComposerType, CmsFormState> => ({
+  newsletter: emptyCmsForm(),
+  article: emptyCmsForm(),
+  announcement: emptyCmsForm(),
+  communique: emptyCmsForm(),
 });
 
 interface CreatePublicationComposerProps {
@@ -73,7 +81,8 @@ export function CreatePublicationComposer({
     initialType ?? DEFAULT_PUBLICATION_COMPOSER_TYPE
   );
   const [socialText, setSocialText] = useState('');
-  const [cmsForm, setCmsForm] = useState<CmsFormState>(emptyCmsForm);
+  const [cmsFormsByType, setCmsFormsByType] = useState(emptyCmsFormsByType);
+  const cmsForm = isCmsType(selectedType) ? cmsFormsByType[selectedType] : emptyCmsForm();
   const [previewMode, setPreviewMode] = useState<'mobile' | 'desktop'>('mobile');
   const [scheduledAt, setScheduledAtState] = useState(() =>
     parseComposerScheduledAt(initialScheduledAtIso)
@@ -87,7 +96,7 @@ export function CreatePublicationComposer({
   const resetForm = useCallback(() => {
     setSelectedType(initialType ?? DEFAULT_PUBLICATION_COMPOSER_TYPE);
     setSocialText('');
-    setCmsForm(emptyCmsForm());
+    setCmsFormsByType(emptyCmsFormsByType());
     setPreviewMode('mobile');
     setScheduledAtState(parseComposerScheduledAt(initialScheduledAtIso));
     setCalendarOpen(false);
@@ -109,41 +118,69 @@ export function CreatePublicationComposer({
     resetForm();
   }, [onOpenChange, resetForm]);
 
-  const updateCmsForm = useCallback(<K extends keyof CmsFormState>(key: K, value: CmsFormState[K]) => {
-    setCmsForm((prev) => ({ ...prev, [key]: value }));
-  }, []);
+  const updateCurrentCmsForm = useCallback(
+    (updater: (prev: CmsFormState) => CmsFormState) => {
+      if (!isCmsType(selectedType)) return;
+      setCmsFormsByType((prev) => ({
+        ...prev,
+        [selectedType]: updater(prev[selectedType]),
+      }));
+    },
+    [selectedType]
+  );
+
+  const updateCmsForm = useCallback(
+    <K extends keyof CmsFormState>(key: K, value: CmsFormState[K]) => {
+      updateCurrentCmsForm((prev) => ({ ...prev, [key]: value }));
+    },
+    [updateCurrentCmsForm]
+  );
 
   const handleAddTag = useCallback(() => {
-    const trimmed = cmsForm.tagInput.trim();
-    if (trimmed && !cmsForm.tags.includes(trimmed) && cmsForm.tags.length < 10) {
-      setCmsForm((prev) => ({ ...prev, tags: [...prev.tags, trimmed], tagInput: '' }));
-    }
-  }, [cmsForm.tagInput, cmsForm.tags]);
+    updateCurrentCmsForm((prev) => {
+      const trimmed = prev.tagInput.trim();
+      if (trimmed && !prev.tags.includes(trimmed) && prev.tags.length < 10) {
+        return { ...prev, tags: [...prev.tags, trimmed], tagInput: '' };
+      }
+      return prev;
+    });
+  }, [updateCurrentCmsForm]);
 
   const handleTagKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'Enter') {
         e.preventDefault();
         handleAddTag();
-      } else if (e.key === 'Backspace' && !cmsForm.tagInput && cmsForm.tags.length > 0) {
-        setCmsForm((prev) => ({ ...prev, tags: prev.tags.slice(0, -1) }));
+      } else if (e.key === 'Backspace') {
+        updateCurrentCmsForm((prev) => {
+          if (!prev.tagInput && prev.tags.length > 0) {
+            return { ...prev, tags: prev.tags.slice(0, -1) };
+          }
+          return prev;
+        });
       }
     },
-    [handleAddTag, cmsForm.tagInput, cmsForm.tags.length]
+    [handleAddTag, updateCurrentCmsForm]
   );
 
-  const handleRemoveTag = useCallback((tag: string) => {
-    setCmsForm((prev) => ({ ...prev, tags: prev.tags.filter((item) => item !== tag) }));
-  }, []);
+  const handleRemoveTag = useCallback(
+    (tag: string) => {
+      updateCurrentCmsForm((prev) => ({ ...prev, tags: prev.tags.filter((item) => item !== tag) }));
+    },
+    [updateCurrentCmsForm]
+  );
 
-  const handleToggleChannel = useCallback((channelId: string) => {
-    setCmsForm((prev) => ({
-      ...prev,
-      selectedChannels: prev.selectedChannels.includes(channelId)
-        ? prev.selectedChannels.filter((id) => id !== channelId)
-        : [...prev.selectedChannels, channelId],
-    }));
-  }, []);
+  const handleToggleChannel = useCallback(
+    (channelId: string) => {
+      updateCurrentCmsForm((prev) => ({
+        ...prev,
+        selectedChannels: prev.selectedChannels.includes(channelId)
+          ? prev.selectedChannels.filter((id) => id !== channelId)
+          : [...prev.selectedChannels, channelId],
+      }));
+    },
+    [updateCurrentCmsForm]
+  );
 
   const buildPayload = useCallback((): PublicationComposerPayload => {
     const metadata: Record<string, unknown> = {};
@@ -237,14 +274,10 @@ export function CreatePublicationComposer({
           toast.success(pc.scheduledFor.replace('{date}', formattedSchedule));
         }
 
-        const targetPage = getPageForType(selectedType);
-        const stayOnCurrentView =
-          activePage === 'editorial-calendar' || activePage === 'scheduling';
-
         handleClose();
 
-        if (targetPage && mode !== 'draft' && !stayOnCurrentView) {
-          setActivePage(targetPage);
+        if (mode !== 'draft') {
+          setActivePage('editorial-calendar');
         }
       } catch {
         toast.error('Failed to save content');

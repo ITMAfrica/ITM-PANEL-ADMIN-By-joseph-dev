@@ -128,7 +128,7 @@ export function AnalyticsSection({
   );
 }
 
-function ChartCard({ subtitle, children }: { subtitle?: string; children: React.ReactNode }) {
+export function ChartCard({ subtitle, children }: { subtitle?: string; children: React.ReactNode }) {
   return (
     <Card className="overflow-hidden border dark-card-glow">
       {subtitle && (
@@ -141,7 +141,7 @@ function ChartCard({ subtitle, children }: { subtitle?: string; children: React.
   );
 }
 
-function ResourceTrendChart({
+export function ResourceTrendChart({
   resourceId,
   data,
   publishedLabel,

@@ -3,6 +3,7 @@
 import { Plus, X, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -136,18 +137,12 @@ export function CmsEditorFields({
           <Label htmlFor="composer-summary" className="text-sm font-medium text-[#1D141F]">
             {cc.summaryLabel}
           </Label>
-          <ComposerContentEditor
+          <Textarea
             id="composer-summary"
             value={form.summary}
-            onChange={(value) => onChange('summary', value)}
+            onChange={(e) => onChange('summary', e.target.value)}
             placeholder={cc.summaryPlaceholder}
-            compact
-            counterIcon={
-              TypeIcon ? (
-                <TypeIcon className={cn('h-3.5 w-3.5', typeConfig?.color)} />
-              ) : undefined
-            }
-            className="lg:flex-none"
+            className="min-h-[100px] resize-none border-[#E8ECEF] bg-[#FAFBFC] px-4 py-3 text-sm leading-relaxed focus-visible:border-[oklch(0.55_0.18_250)] sm:min-h-[120px]"
           />
         </div>
       </div>

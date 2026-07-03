@@ -7,10 +7,6 @@ import { DashboardView } from '@/components/views/dashboard-view';
 import { AutomationsView } from '@/components/views/automations-view';
 import { ReportsView } from '@/components/views/reports-view';
 import { SettingsView } from '@/components/views/settings-view';
-import { NewslettersView } from '@/components/views/newsletters-view';
-import { ArticlesView } from '@/components/views/articles-view';
-import { AnnouncementsView } from '@/components/views/announcements-view';
-import { CampaignsView } from '@/components/views/campaigns-view';
 import { EditorialCalendarView } from '@/components/views/editorial-calendar-view';
 import { LibraryView } from '@/components/views/library-view';
 import { MediaView } from '@/components/views/media-view';
@@ -18,8 +14,6 @@ import { TemplatesView } from '@/components/views/templates-view';
 import { DraftsView } from '@/components/views/drafts-view';
 import { PublishedView } from '@/components/views/published-view';
 import { ArchiveView } from '@/components/views/archive-view';
-import { SchedulingView } from '@/components/views/scheduling-view';
-import { ChannelsView } from '@/components/views/channels-view';
 import { StatisticsView } from '@/components/views/statistics-view';
 import { UsersView } from '@/components/views/users-view';
 import { RolesView } from '@/components/views/roles-view';
@@ -40,13 +34,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowUp, Plus, FileText, Target, Clock } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { PageTransition } from '@/components/page-transition';
+import { shouldShowAppSidebar } from '@/lib/navigation';
+import type { OpenPublicationComposerOptions } from '@/lib/publication-composer';
+
+import { LEGACY_COMMUNICATION_REDIRECTS } from '@/lib/app-routes';
+
+const LEGACY_HUB_PAGE_SET = new Set<string>(Object.keys(LEGACY_COMMUNICATION_REDIRECTS));
 
 const viewMap: Record<string, React.ComponentType> = {
   dashboard: DashboardView,
-  newsletters: NewslettersView,
-  articles: ArticlesView,
-  announcements: AnnouncementsView,
-  campaigns: CampaignsView,
   'editorial-calendar': EditorialCalendarView,
   library: LibraryView,
   media: MediaView,
@@ -54,8 +50,6 @@ const viewMap: Record<string, React.ComponentType> = {
   drafts: DraftsView,
   published: PublishedView,
   archive: ArchiveView,
-  scheduling: SchedulingView,
-  channels: ChannelsView,
   automations: AutomationsView,
   statistics: StatisticsView,
   reports: ReportsView,
@@ -110,6 +104,12 @@ function BackToTopButton() {
   );
 }
 
+function openCalendarComposer(opts?: OpenPublicationComposerOptions) {
+  const store = useAppStore.getState();
+  store.setActivePage('editorial-calendar');
+  store.openPublicationComposer(opts);
+}
+
 function MobileFAB() {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -127,7 +127,7 @@ function MobileFAB() {
           >
             <button
               onClick={() => {
-                useAppStore.getState().openPublicationComposer();
+                openCalendarComposer();
                 setOpen(false);
               }}
               className="flex items-center gap-2 px-3 py-2 rounded-full bg-background shadow-lg border text-xs font-medium hover:bg-muted transition-colors"
@@ -137,7 +137,7 @@ function MobileFAB() {
             </button>
             <button
               onClick={() => {
-                useAppStore.getState().setActivePage('campaigns');
+                openCalendarComposer({ type: 'article' });
                 setOpen(false);
               }}
               className="flex items-center gap-2 px-3 py-2 rounded-full bg-background shadow-lg border text-xs font-medium hover:bg-muted transition-colors"
@@ -147,7 +147,7 @@ function MobileFAB() {
             </button>
             <button
               onClick={() => {
-                useAppStore.getState().openPublicationComposer();
+                openCalendarComposer({ type: 'article', scheduledAt: new Date() });
                 setOpen(false);
               }}
               className="flex items-center gap-2 px-3 py-2 rounded-full bg-background shadow-lg border text-xs font-medium hover:bg-muted transition-colors"
@@ -175,7 +175,6 @@ function MobileFAB() {
   );
 }
 
-const HOME_PAGE_ID = 'dashboard';
 
 function LazyOverlays() {
   const notificationPanelOpen = useAppStore((s) => s.notificationPanelOpen);
@@ -200,7 +199,7 @@ function LazyOverlays() {
 export function MainApp() {
   const activePage = useAppStore((s) => s.activePage);
   const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
-  const isHomePage = activePage === HOME_PAGE_ID;
+  const showSidebar = shouldShowAppSidebar(activePage);
 
   useKeyboardShortcuts();
   useSyncAppUrl();
@@ -216,12 +215,15 @@ export function MainApp() {
   }, []);
 
   useEffect(() => {
-    if (!isHomePage) {
+    if (!showSidebar) {
       useAppStore.getState().setMobileSidebarOpen(false);
     }
-  }, [isHomePage]);
+  }, [showSidebar]);
 
-  const ActiveView = viewMap[activePage] || DashboardView;
+  const ActiveView =
+    activePage === 'editorial-calendar' || LEGACY_HUB_PAGE_SET.has(activePage)
+      ? EditorialCalendarView
+      : viewMap[activePage] || DashboardView;
 
   return (
     <div className="min-h-screen bg-content-bg">
@@ -230,12 +232,12 @@ export function MainApp() {
 
       {/* Body: sidebar (home only) + scrollable content below top bar */}
       <div className="flex pt-18 min-h-screen">
-        {isHomePage && <AppSidebar />}
+        {showSidebar && <AppSidebar />}
 
         <div
           className={cn(
             'flex-1 flex flex-col min-h-[calc(100vh-4.5rem)] transition-all duration-300',
-            isHomePage && (sidebarCollapsed ? 'lg:ml-[68px]' : 'lg:ml-[260px]')
+            showSidebar && (sidebarCollapsed ? 'lg:ml-[68px]' : 'lg:ml-[260px]')
           )}
         >
           <main

@@ -338,6 +338,47 @@ export async function getContentByIdAdmin(id: string) {
   });
 }
 
+export async function approveContent(id: string) {
+  const existing = await db.content.findUnique({ where: { id } });
+  if (!existing || existing.status !== 'review') return null;
+
+  return db.content.update({
+    where: { id },
+    data: { status: 'approved' },
+    include: { site: true },
+  });
+}
+
+export async function rejectContent(id: string, reason?: string) {
+  const existing = await db.content.findUnique({ where: { id } });
+  if (!existing || existing.status !== 'review') return null;
+
+  const meta = parseMetadata(existing.metadata);
+  if (reason) {
+    meta.rejectionReason = reason;
+  }
+
+  return db.content.update({
+    where: { id },
+    data: {
+      status: 'draft',
+      metadata: meta as Prisma.InputJsonValue,
+    },
+    include: { site: true },
+  });
+}
+
+export async function submitContentForReview(id: string) {
+  const existing = await db.content.findUnique({ where: { id } });
+  if (!existing || existing.status !== 'draft') return null;
+
+  return db.content.update({
+    where: { id },
+    data: { status: 'review' },
+    include: { site: true },
+  });
+}
+
 export async function getDefaultSiteForTenant(tenantId: string) {
   return db.site.findFirst({
     where: { tenantId, status: 'active' },

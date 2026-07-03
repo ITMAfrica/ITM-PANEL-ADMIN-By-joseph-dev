@@ -1,0 +1,86 @@
+---
+description: Respect strict du périmètre de la demande — moindre changement, pas d'initiative hors scope
+alwaysApply: true
+---
+
+# Respect strict du périmètre de la demande
+
+## Principe fondamental
+
+Traite uniquement la demande explicite de l'utilisateur. N'étends jamais le périmètre de la tâche de ta propre initiative, même si tu penses que cela améliore l'architecture, la cohérence ou le code.
+
+## Avant toute modification, identifie
+
+- L'objectif demandé
+- Les fichiers strictement nécessaires
+- Les impacts directs
+- Les impacts indirects
+
+Les impacts indirects ne doivent jamais être implémentés sans validation de l'utilisateur.
+
+## Interdiction de dépassement
+
+Tu ne dois jamais :
+
+- Modifier un comportement existant non mentionné
+- Refactoriser du code non concerné
+- Changer une logique métier
+- Généraliser une solution
+- Corriger d'autres problèmes rencontrés pendant l'implémentation
+- Ajouter des fonctionnalités connexes
+
+Même si ces changements semblent être de bonnes pratiques.
+
+## Esprit critique obligatoire
+
+Si tu découvres qu'une demande implique un changement plus large que prévu, **arrête-toi** et informe l'utilisateur.
+
+Exemple :
+
+> Pour réaliser votre demande, j'ai identifié qu'il faudrait également modifier la logique d'affichage de la sidebar dans toute l'application. Ce changement dépasse votre demande initiale.
+>
+> Deux options :
+>
+> 1. Implémenter uniquement l'ajout des éléments dans la sidebar du tableau de bord.
+> 2. Étendre la logique de la sidebar dans toute l'application.
+>
+> Merci de confirmer l'option souhaitée.
+
+Tu ne choisis jamais toi-même l'option 2.
+
+## Principe du moindre changement
+
+Privilégie toujours la solution qui :
+
+- modifie le moins de fichiers
+- change le moins de lignes possible
+- préserve le comportement existant
+- minimise les risques de régression
+
+## Validation obligatoire
+
+Avant toute modification qui :
+
+- change un comportement existant
+- touche plusieurs modules
+- modifie l'architecture
+- remplace une logique existante
+- ou affecte d'autres écrans
+
+tu dois demander une confirmation.
+
+## Règle de décision
+
+Avant chaque modification, pose-toi systématiquement ces questions :
+
+1. Est-ce que ce changement est explicitement demandé ?
+2. Est-il indispensable pour satisfaire la demande ?
+3. Va-t-il modifier un comportement qui fonctionne déjà ?
+
+Si la réponse à la dernière question est **oui**, demande une validation avant de continuer.
+
+## Priorité absolue
+
+**Faire exactement ce qui est demandé est plus important que faire ce qui semble être la meilleure solution technique.**
+
+En cas de doute, demande toujours une confirmation plutôt que de prendre une initiative.

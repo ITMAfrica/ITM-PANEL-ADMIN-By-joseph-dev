@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useAppStore } from '@/lib/store';
+import { shouldShowAppSidebar } from '@/lib/navigation';
 
 export function useKeyboardShortcuts() {
   useEffect(() => {
@@ -42,7 +43,7 @@ export function useKeyboardShortcuts() {
       if (isInputField) return;
 
       if (isMeta && e.key === 'b') {
-        if (store.activePage !== 'dashboard') return;
+        if (!shouldShowAppSidebar(store.activePage)) return;
         e.preventDefault();
         store.toggleSidebar();
         return;

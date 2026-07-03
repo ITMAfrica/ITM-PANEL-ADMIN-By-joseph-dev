@@ -26,9 +26,11 @@ import {
   SECTION_NAV,
   getSectionForPage,
   getSectionItems,
+  isDashboardSidebarPage,
   type SectionKey,
 } from '@/lib/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { DashboardConnectionsNav, DashboardToolsNav } from '@/components/dashboard-sidebar-nav';
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -156,6 +158,10 @@ export function AppSidebar() {
     setMobileSidebarOpen,
     notifications,
     favorites,
+    dashboardPlatform,
+    setDashboardPlatform,
+    dashboardTool,
+    setDashboardTool,
   } = useAppStore(
     useShallow((s) => ({
       activePage: s.activePage,
@@ -165,6 +171,10 @@ export function AppSidebar() {
       setMobileSidebarOpen: s.setMobileSidebarOpen,
       notifications: s.notifications,
       favorites: s.favorites,
+      dashboardPlatform: s.dashboardPlatform,
+      setDashboardPlatform: s.setDashboardPlatform,
+      dashboardTool: s.dashboardTool,
+      setDashboardTool: s.setDashboardTool,
     }))
   );
   const { t } = useTranslation();
@@ -273,30 +283,54 @@ export function AppSidebar() {
           </>
         )}
 
-        {activeSection && visibleSectionItems.length > 0 && (
-          <>
-            <SectionLabel collapsed={sidebarCollapsed}>
-              {getSectionLabel(activeSection)}
-            </SectionLabel>
-            <div className="space-y-0.5">
-              {visibleSectionItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <NavItem
-                    key={item.pageId}
-                    icon={<Icon className="h-4 w-4" />}
-                    label={getNavLabel(item.pageId)}
-                    pageId={item.pageId}
-                    active={activePage === item.pageId}
-                    collapsed={sidebarCollapsed}
-                    onClick={() => handleNavClick(item.pageId)}
-                  />
-                );
-              })}
-            </div>
-          </>
+        {isDashboardSidebarPage(activePage) ? (
+          <DashboardConnectionsNav
+            collapsed={sidebarCollapsed}
+            activePlatform={dashboardPlatform}
+            onPlatformChange={(platform) => {
+              setDashboardPlatform(platform);
+              if (activePage !== 'dashboard') handleNavClick('dashboard');
+            }}
+          />
+        ) : (
+          activeSection &&
+          visibleSectionItems.length > 0 && (
+            <>
+              <SectionLabel collapsed={sidebarCollapsed}>
+                {getSectionLabel(activeSection)}
+              </SectionLabel>
+              <div className="space-y-0.5">
+                {visibleSectionItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <NavItem
+                      key={item.pageId}
+                      icon={<Icon className="h-4 w-4" />}
+                      label={getNavLabel(item.pageId)}
+                      pageId={item.pageId}
+                      active={activePage === item.pageId}
+                      collapsed={sidebarCollapsed}
+                      onClick={() => handleNavClick(item.pageId)}
+                    />
+                  );
+                })}
+              </div>
+            </>
+          )
         )}
       </ScrollArea>
+
+      {isDashboardSidebarPage(activePage) && (
+        <>
+          <Separator className="bg-sidebar-border/60 flex-shrink-0" />
+          <DashboardToolsNav
+            collapsed={sidebarCollapsed}
+            activeTool={dashboardTool}
+            onToolChange={setDashboardTool}
+            onNavigate={handleNavClick}
+          />
+        </>
+      )}
 
       <Separator className="bg-sidebar-border/60" />
 

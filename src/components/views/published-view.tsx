@@ -16,6 +16,7 @@ import {
   ViewSearchInput,
   ViewOutlineButton,
 } from '@/components/view-layout';
+import { UpgradePlanBanner } from '@/components/upgrade-plan-banner';
 import { ResourceAnalyticsPanel } from '@/components/resource-analytics';
 import {
   ViewDataTable,
@@ -126,6 +127,7 @@ export function PublishedView() {
 
   return (
     <ViewShell>
+      <UpgradePlanBanner variant="published" />
       <ViewSubNav tabs={tabs} activeTab={activeTab} onTabChange={() => {}} />
       <ViewTabPanel>
         <ResourceAnalyticsPanel resourceId="published-content" />

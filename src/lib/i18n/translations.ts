@@ -146,6 +146,64 @@ export const translations = {
       },
     },
 
+    // Upgrade plan banners
+    upgradePlan: {
+      library: {
+        title: 'Besoin de plus de visibilité sur votre bibliothèque ?',
+        description:
+          'Débloquez l\'historique au-delà de 30 jours et consultez les performances de vos contenus sans filigrane.',
+        cta: 'Mettez à jour votre plan',
+      },
+      editorialCalendar: {
+        title: 'Planifiez plus loin avec votre calendrier',
+        description:
+          'Programmez vos publications au-delà de 30 jours et exportez votre calendrier éditorial en un clic.',
+        cta: 'Mettez à jour votre plan',
+      },
+      statistics: {
+        title: 'Allez plus loin dans vos statistiques',
+        description:
+          'Accédez à l\'historique complet, comparez les périodes et débloquez les métriques avancées.',
+        cta: 'Mettez à jour votre plan',
+      },
+      reports: {
+        title: 'Des rapports complets, sans limite',
+        description:
+          'Exportez vos données en PDF ou Excel et analysez toutes les périodes, sans restriction.',
+        cta: 'Mettez à jour votre plan',
+      },
+      media: {
+        title: 'Votre espace média est presque plein ?',
+        description:
+          'Augmentez votre stockage, téléversez des fichiers plus volumineux et gérez toute votre médiathèque.',
+        cta: 'Mettez à jour votre plan',
+      },
+      templates: {
+        title: 'Gagnez du temps avec plus de modèles',
+        description:
+          'Accédez à une bibliothèque élargie de gabarits et personnalisez-les selon votre marque.',
+        cta: 'Mettez à jour votre plan',
+      },
+      drafts: {
+        title: 'Plus de brouillons, plus de collaboration',
+        description:
+          'Conservez davantage de versions en cours et travaillez à plusieurs sur vos contenus.',
+        cta: 'Mettez à jour votre plan',
+      },
+      published: {
+        title: 'Retrouvez tout votre historique de publication',
+        description:
+          'Consultez l\'ensemble de vos contenus publiés, y compris au-delà des 30 derniers jours.',
+        cta: 'Mettez à jour votre plan',
+      },
+      archive: {
+        title: 'Conservez vos archives plus longtemps',
+        description:
+          'Prolongez la durée de rétention et restaurez vos contenus archivés sans limite.',
+        cta: 'Mettez à jour votre plan',
+      },
+    },
+
     // Dashboard
     dashboard: {
       title: 'Tableau de bord',
@@ -209,6 +267,39 @@ export const translations = {
       avgPublishTime: 'Temps de publication moyen',
       deliveryRate: 'Taux de livraison',
       days: 'jours',
+      metrics: {
+        published: 'Publiés',
+        drafts: 'Brouillons',
+        scheduled: 'Planifiés',
+        inReview: 'En revue',
+        active: 'Actives',
+        avgPublishRate: 'Taux publication',
+        thisWeek: 'Cette semaine',
+        queueSize: 'File d\'attente',
+        nextSend: 'Prochain envoi',
+        totalChannels: 'Total canaux',
+        activeChannels: 'Canaux actifs',
+        subscribers: 'Abonnés',
+      },
+    },
+
+    dashboardSidebar: {
+      moreConnections: 'Plus de connexions',
+      newBadge: 'Nouveau',
+      connections: {
+        summary: 'Résumé',
+        facebook: 'Facebook',
+        instagram: 'Instagram',
+        tiktok: 'TikTok',
+        youtube: 'Youtube',
+        linkedin: 'LinkedIn',
+      },
+      tools: {
+        reports: 'Rapports',
+        analytics: 'Rapports',
+        hashtagTracker: 'Hashtag Tracker',
+        messageSettings: 'Paramètres des messages',
+      },
     },
 
     // Newsletters
@@ -317,6 +408,8 @@ export const translations = {
       tabs: {
         calendar: 'Calendrier',
         list: 'Liste',
+        queue: 'Planification',
+        channels: 'Canaux',
         library: 'Librairie de publications',
         autoLists: 'Listes automatiques',
         deleted: 'Publications supprimées',
@@ -1205,6 +1298,64 @@ export const translations = {
       },
     },
 
+    // Upgrade plan banners
+    upgradePlan: {
+      library: {
+        title: 'Need more visibility on your library?',
+        description:
+          'Unlock history beyond 30 days and view your content performance without watermarks.',
+        cta: 'Update your plan',
+      },
+      editorialCalendar: {
+        title: 'Plan further ahead with your calendar',
+        description:
+          'Schedule publications beyond 30 days and export your editorial calendar in one click.',
+        cta: 'Update your plan',
+      },
+      statistics: {
+        title: 'Go deeper with your statistics',
+        description:
+          'Access full history, compare time periods, and unlock advanced metrics.',
+        cta: 'Update your plan',
+      },
+      reports: {
+        title: 'Complete reports, no limits',
+        description:
+          'Export your data as PDF or Excel and analyze all time periods without restrictions.',
+        cta: 'Update your plan',
+      },
+      media: {
+        title: 'Running out of media storage?',
+        description:
+          'Increase your storage, upload larger files, and manage your entire media library.',
+        cta: 'Update your plan',
+      },
+      templates: {
+        title: 'Save time with more templates',
+        description:
+          'Access an expanded template library and customize layouts to match your brand.',
+        cta: 'Update your plan',
+      },
+      drafts: {
+        title: 'More drafts, more collaboration',
+        description:
+          'Keep more work-in-progress versions and collaborate with your team on content.',
+        cta: 'Update your plan',
+      },
+      published: {
+        title: 'Find your full publication history',
+        description:
+          'Browse all published content, including items older than the last 30 days.',
+        cta: 'Update your plan',
+      },
+      archive: {
+        title: 'Keep your archives longer',
+        description:
+          'Extend retention periods and restore archived content without limits.',
+        cta: 'Update your plan',
+      },
+    },
+
     // Dashboard
     dashboard: {
       title: 'Dashboard',
@@ -1268,6 +1419,39 @@ export const translations = {
       avgPublishTime: 'Avg. Publishing Time',
       deliveryRate: 'Delivery Rate',
       days: 'days',
+      metrics: {
+        published: 'Published',
+        drafts: 'Drafts',
+        scheduled: 'Scheduled',
+        inReview: 'In review',
+        active: 'Active',
+        avgPublishRate: 'Publish rate',
+        thisWeek: 'This week',
+        queueSize: 'Queue size',
+        nextSend: 'Next send',
+        totalChannels: 'Total channels',
+        activeChannels: 'Active channels',
+        subscribers: 'Subscribers',
+      },
+    },
+
+    dashboardSidebar: {
+      moreConnections: 'More connections',
+      newBadge: 'New',
+      connections: {
+        summary: 'Summary',
+        facebook: 'Facebook',
+        instagram: 'Instagram',
+        tiktok: 'TikTok',
+        youtube: 'Youtube',
+        linkedin: 'LinkedIn',
+      },
+      tools: {
+        reports: 'Reports',
+        analytics: 'Reports',
+        hashtagTracker: 'Hashtag Tracker',
+        messageSettings: 'Message settings',
+      },
     },
 
     // Newsletters
@@ -1376,6 +1560,8 @@ export const translations = {
       tabs: {
         calendar: 'Calendar',
         list: 'List',
+        queue: 'Scheduling',
+        channels: 'Channels',
         library: 'Publication library',
         autoLists: 'Automatic lists',
         deleted: 'Deleted publications',

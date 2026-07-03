@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import {
+  approveContent,
   createContent,
   deleteContent,
   getApprovedContent,
@@ -9,6 +10,8 @@ import {
   getStatsByTenant,
   listContent,
   publishContent,
+  rejectContent,
+  submitContentForReview,
   updateContent,
 } from '../services/content.service';
 import { mapContent, toApprovedContentItem } from '../services/mappers/content.mapper';
@@ -201,5 +204,78 @@ export async function approved(req: Request, res: Response) {
   } catch (error) {
     console.error('GET /api/content/approved', error);
     res.status(500).json({ error: 'Failed to fetch content' });
+  }
+}
+
+export async function approve(req: Request, res: Response) {
+  try {
+    const existing = await getAuthorizedContent(req, req.params.id as string);
+    if (!existing) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+    if (existing.status !== 'review') {
+      res.status(409).json({ error: 'Content is not in review' });
+      return;
+    }
+
+    const row = await approveContent(req.params.id as string);
+    if (!row) {
+      res.status(409).json({ error: 'Content is not in review' });
+      return;
+    }
+    res.json(mapContent(row));
+  } catch (error) {
+    console.error('POST /api/content/:id/approve', error);
+    res.status(500).json({ error: 'Failed to approve content' });
+  }
+}
+
+export async function reject(req: Request, res: Response) {
+  try {
+    const existing = await getAuthorizedContent(req, req.params.id as string);
+    if (!existing) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+    if (existing.status !== 'review') {
+      res.status(409).json({ error: 'Content is not in review' });
+      return;
+    }
+
+    const reason = typeof req.body?.reason === 'string' ? req.body.reason : undefined;
+    const row = await rejectContent(req.params.id as string, reason);
+    if (!row) {
+      res.status(409).json({ error: 'Content is not in review' });
+      return;
+    }
+    res.json(mapContent(row));
+  } catch (error) {
+    console.error('POST /api/content/:id/reject', error);
+    res.status(500).json({ error: 'Failed to reject content' });
+  }
+}
+
+export async function submitForReview(req: Request, res: Response) {
+  try {
+    const existing = await getAuthorizedContent(req, req.params.id as string);
+    if (!existing) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+    if (existing.status !== 'draft') {
+      res.status(409).json({ error: 'Content is not a draft' });
+      return;
+    }
+
+    const row = await submitContentForReview(req.params.id as string);
+    if (!row) {
+      res.status(409).json({ error: 'Content is not a draft' });
+      return;
+    }
+    res.json(mapContent(row));
+  } catch (error) {
+    console.error('POST /api/content/:id/submit-for-review', error);
+    res.status(500).json({ error: 'Failed to submit content for review' });
   }
 }

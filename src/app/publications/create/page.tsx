@@ -1,10 +1,9 @@
 'use client';
 
-import { Suspense, useEffect, useMemo } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAppStore } from '@/lib/store';
 import { LoginPage } from '@/components/login-page';
-import { CreatePublicationComposer } from '@/components/create-publication-composer';
 import type { PublicationComposerType } from '@/lib/publication-composer';
 
 const VALID_TYPES: PublicationComposerType[] = [
@@ -35,11 +34,18 @@ function CreatePublicationPageContent() {
   const hasHydrated = useAppStore((s) => s._hasHydrated);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialType = useMemo(() => parseType(searchParams.get('type')), [searchParams]);
 
   useEffect(() => {
     useAppStore.persist.rehydrate();
   }, []);
+
+  useEffect(() => {
+    if (!hasHydrated || !isAuthenticated) return;
+    const type = parseType(searchParams.get('type'));
+    const params = new URLSearchParams({ tab: 'calendar', create: 'true' });
+    if (type) params.set('composerType', type);
+    router.replace(`/editorial-calendar?${params.toString()}`);
+  }, [hasHydrated, isAuthenticated, router, searchParams]);
 
   if (!hasHydrated) {
     return <PageLoader />;
@@ -49,16 +55,7 @@ function CreatePublicationPageContent() {
     return <LoginPage />;
   }
 
-  return (
-    <CreatePublicationComposer
-      overlay
-      open
-      initialType={initialType}
-      onOpenChange={(open) => {
-        if (!open) router.push('/');
-      }}
-    />
-  );
+  return <PageLoader />;
 }
 
 export default function CreatePublicationPage() {

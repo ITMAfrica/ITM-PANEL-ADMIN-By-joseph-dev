@@ -40,6 +40,11 @@ import type { ContentItem, ContentType } from '@/lib/types';
 import { contentStatusColors, contentStatusLabels } from '@/lib/ui-constants';
 import { useUserLookup } from '@/hooks/use-user-lookup';
 import { formatContentPreview } from '@/lib/media-insert';
+import {
+  useApproveContent,
+  useRejectContent,
+  useSubmitContentForReview,
+} from '@/hooks/use-content';
 
 // ─── Content type config ─────────────────────────────────────────────────
 const contentTypeConfig: Record<ContentType, { icon: React.ElementType; label: Record<string, string>; gradient: string; color: string }> = {
@@ -122,6 +127,9 @@ export function ContentDetailDrawer() {
   const { t } = useTranslation();
   const activeTenantId = useAppStore((s) => s.activeTenantId);
   const { getUserName, getUserInitials } = useUserLookup(activeTenantId);
+  const approveContent = useApproveContent();
+  const rejectContent = useRejectContent();
+  const submitForReview = useSubmitContentForReview();
 
   const content = selectedContent as ContentItem | null;
 
@@ -149,6 +157,33 @@ export function ContentDetailDrawer() {
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  const handleWorkflowAction = async (
+    action: 'submitReview' | 'approve' | 'reject'
+  ) => {
+    if (!content) return;
+
+    try {
+      let updated: ContentItem;
+      if (action === 'submitReview') {
+        updated = await submitForReview.mutateAsync(content.id);
+        toast.success(t.contentDetail.submitReview);
+      } else if (action === 'approve') {
+        updated = await approveContent.mutateAsync(content.id);
+        toast.success(t.contentDetail.approve);
+      } else {
+        updated = await rejectContent.mutateAsync({ id: content.id });
+        toast.success(t.contentDetail.reject);
+      }
+      setSelectedContent(updated as unknown as Record<string, unknown>);
+    } catch {
+      toast.error(
+        locale === 'fr'
+          ? 'Action impossible pour ce contenu'
+          : 'Unable to perform this action on the content'
+      );
+    }
   };
 
   const handleAction = (action: string) => {
@@ -360,7 +395,7 @@ export function ContentDetailDrawer() {
                   <Button
                     className="flex-1 gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-sm"
                     size="sm"
-                    onClick={() => handleAction(t.contentDetail.submitReview)}
+                    onClick={() => handleWorkflowAction('submitReview')}
                   >
                     <ArrowRightCircle className="h-3.5 w-3.5" />
                     {t.contentDetail.submitReview}
@@ -371,7 +406,7 @@ export function ContentDetailDrawer() {
                     <Button
                       className="flex-1 gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-sm"
                       size="sm"
-                      onClick={() => handleAction(t.contentDetail.approve)}
+                      onClick={() => handleWorkflowAction('approve')}
                     >
                       <ThumbsUp className="h-3.5 w-3.5" />
                       {t.contentDetail.approve}
@@ -380,7 +415,7 @@ export function ContentDetailDrawer() {
                       variant="outline"
                       className="flex-1 gap-1.5 border-rose-500/30 text-rose-600 hover:bg-rose-500/10 hover:text-rose-600"
                       size="sm"
-                      onClick={() => handleAction(t.contentDetail.reject)}
+                      onClick={() => handleWorkflowAction('reject')}
                     >
                       <ThumbsDown className="h-3.5 w-3.5" />
                       {t.contentDetail.reject}

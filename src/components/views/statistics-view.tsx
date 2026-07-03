@@ -8,6 +8,7 @@ import {
   type ViewTab,
 } from '@/components/view-layout';
 import { AllResourceAnalyticsPanels } from '@/components/resource-analytics';
+import { UpgradePlanBanner } from '@/components/upgrade-plan-banner';
 
 const periods = [
   { key: '7d', label: '7d' },
@@ -29,6 +30,7 @@ export function StatisticsView() {
 
   return (
     <ViewShell>
+      <UpgradePlanBanner variant="statistics" />
       <ViewSubNav tabs={periodTabs} activeTab={period} onTabChange={setPeriod} />
       <ViewTabPanel className="space-y-8">
         <AllResourceAnalyticsPanels weeksCount={weeksCount} />

@@ -9,6 +9,7 @@ import { stripMediaMarkdown } from '@/lib/media-insert';
 import { useUserLookup } from '@/hooks/use-user-lookup';
 import type { ContentItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { UpgradePlanBanner } from '@/components/upgrade-plan-banner';
 import {
   ViewShell,
   ViewSubNav,
@@ -98,6 +99,7 @@ export function ArchiveView() {
 
   return (
     <ViewShell>
+      <UpgradePlanBanner variant="archive" />
       <ViewSubNav tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
       <ViewTabPanel>
         <ViewToolbar>

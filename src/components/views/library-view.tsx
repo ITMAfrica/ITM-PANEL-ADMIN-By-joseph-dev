@@ -27,6 +27,7 @@ import {
   ViewFilterRow,
   FilterChip,
 } from '@/components/view-layout';
+import { UpgradePlanBanner } from '@/components/upgrade-plan-banner';
 import { ResourceAnalyticsPanel } from '@/components/resource-analytics';
 import {
   ViewDataTable,
@@ -152,14 +153,14 @@ export function LibraryView() {
 
   return (
     <ViewShell>
+      <UpgradePlanBanner variant="library" />
+      <ResourceAnalyticsPanel resourceId="published-content" />
       <ViewSubNav
         tabs={typeTabs}
         activeTab={typeFilter as ContentTypeTab}
         onTabChange={setTypeFilter}
       />
       <ViewTabPanel>
-        <ResourceAnalyticsPanel resourceId="published-content" />
-
         <ViewToolbar
           actions={
             <BrandPrimaryButton className="gap-1.5">

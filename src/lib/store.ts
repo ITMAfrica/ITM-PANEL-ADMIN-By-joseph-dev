@@ -69,6 +69,10 @@ interface AppState {
   setSidebarCollapsed: (collapsed: boolean) => void;
   mobileSidebarOpen: boolean;
   setMobileSidebarOpen: (open: boolean) => void;
+  dashboardPlatform: 'summary' | 'facebook' | 'instagram' | 'tiktok' | 'youtube' | 'linkedin';
+  setDashboardPlatform: (platform: AppState['dashboardPlatform']) => void;
+  dashboardTool: 'reports' | 'analytics' | 'hashtag' | 'messageSettings' | null;
+  setDashboardTool: (tool: AppState['dashboardTool']) => void;
 
   // Notifications
   notifications: Notification[];
@@ -194,6 +198,10 @@ export const useAppStore = create<AppState>()(
   setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
   mobileSidebarOpen: false,
   setMobileSidebarOpen: (open) => set({ mobileSidebarOpen: open }),
+  dashboardPlatform: 'summary',
+  setDashboardPlatform: (platform) => set({ dashboardPlatform: platform, dashboardTool: null }),
+  dashboardTool: null,
+  setDashboardTool: (tool) => set({ dashboardTool: tool, dashboardPlatform: 'summary' }),
 
   // Notifications
   notifications: [],

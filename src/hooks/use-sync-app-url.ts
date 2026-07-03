@@ -3,7 +3,11 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAppStore } from '@/lib/store';
-import { pageIdToPath, pathToPageId } from '@/lib/app-routes';
+import {
+  pageIdToPath,
+  pathToPageId,
+  resolveLegacyCommunicationPath,
+} from '@/lib/app-routes';
 
 /**
  * Keeps Zustand `activePage` and the browser URL in sync (bidirectional).
@@ -37,12 +41,26 @@ export function useSyncAppUrl() {
     const pageFromUrl = pathToPageId(pathname);
     if (!pageFromUrl) return;
 
+    const legacyRedirect = resolveLegacyCommunicationPath(pageFromUrl);
+    if (legacyRedirect) {
+      skipUrlPush.current = true;
+      setActivePage('editorial-calendar');
+      const currentFull =
+        pathname +
+        (typeof window !== 'undefined' ? window.location.search : '');
+      if (currentFull !== legacyRedirect) {
+        skipStatePull.current = true;
+        router.replace(legacyRedirect, { scroll: false });
+      }
+      return;
+    }
+
     const currentPage = useAppStore.getState().activePage;
     if (pageFromUrl === currentPage) return;
 
     skipUrlPush.current = true;
     setActivePage(pageFromUrl);
-  }, [pathname, setActivePage]);
+  }, [pathname, setActivePage, router]);
 
   // Zustand navigation → URL
   useEffect(() => {
@@ -51,8 +69,26 @@ export function useSyncAppUrl() {
       return;
     }
 
+    const legacyRedirect = resolveLegacyCommunicationPath(activePage);
+    if (legacyRedirect) {
+      skipStatePull.current = true;
+      if (useAppStore.getState().activePage !== 'editorial-calendar') {
+        setActivePage('editorial-calendar');
+      }
+      const currentFull =
+        pathname +
+        (typeof window !== 'undefined' ? window.location.search : '');
+      if (currentFull !== legacyRedirect) {
+        router.replace(legacyRedirect, { scroll: false });
+      }
+      return;
+    }
+
     const targetPath = pageIdToPath(activePage);
-    if (pathname === targetPath) return;
+    const currentFull =
+      pathname +
+      (typeof window !== 'undefined' ? window.location.search : '');
+    if (currentFull === targetPath) return;
 
     skipStatePull.current = true;
     router.replace(targetPath, { scroll: false });

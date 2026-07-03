@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useState, useMemo, useCallback, useEffect, useRef, memo } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef, memo, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   ViewDataTable,
@@ -54,9 +54,14 @@ import {
   subWeeks,
 } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
-import { useCalendarEvents } from '@/hooks/use-content';
+import { useCalendarEvents, useContent } from '@/hooks/use-content';
 import { useUserLookup } from '@/hooks/use-user-lookup';
-import type { CalendarEvent, ContentItem } from '@/lib/types';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { SchedulingQueuePanel } from '@/components/views/scheduling-queue-panel';
+import { ChannelsPanel } from '@/components/views/channels-panel';
+import { UpgradePlanBanner } from '@/components/upgrade-plan-banner';
+import { CreatePublicationMenu } from '@/components/publication-composer/create-publication-menu';
+import type { CalendarEvent, ContentItem, ContentType } from '@/lib/types';
 import { useAppStore } from '@/lib/store';
 import { useTranslation } from '@/lib/i18n';
 import { contentStatusColors, contentStatusLabels } from '@/lib/ui-constants';
@@ -75,7 +80,28 @@ import {
   brandColors,
 } from '@/components/view-layout';
 
-type EditorialTab = 'calendar' | 'list' | 'library' | 'autoLists' | 'deleted';
+type EditorialTab =
+  | 'calendar'
+  | 'list'
+  | 'queue'
+  | 'channels'
+  | 'library'
+  | 'autoLists'
+  | 'deleted';
+
+const EDITORIAL_TABS: EditorialTab[] = [
+  'calendar',
+  'list',
+  'queue',
+  'channels',
+  'library',
+  'autoLists',
+  'deleted',
+];
+
+function isEditorialTab(value: string | null): value is EditorialTab {
+  return value !== null && EDITORIAL_TABS.includes(value as EditorialTab);
+}
 
 const GRID_TINT = '#EEF4F8';
 const WEEKEND_TINT = '#E4EBF0';
@@ -237,6 +263,8 @@ function EditorialSubNav({
   const tabs = [
     { id: 'calendar' as const, label: t.editorialCalendar.tabs.calendar },
     { id: 'list' as const, label: t.editorialCalendar.tabs.list },
+    { id: 'queue' as const, label: t.editorialCalendar.tabs.queue },
+    { id: 'channels' as const, label: t.editorialCalendar.tabs.channels },
     { id: 'library' as const, label: t.editorialCalendar.tabs.library },
     { id: 'autoLists' as const, label: t.editorialCalendar.tabs.autoLists },
     { id: 'deleted' as const, label: t.editorialCalendar.tabs.deleted },
@@ -260,7 +288,6 @@ function PublicationToolbar({
   onSearchChange: (value: string) => void;
 }) {
   const { t, locale } = useTranslation();
-  const openPublicationComposer = useAppStore((s) => s.openPublicationComposer);
 
   const dateRange = useMemo(() => {
     const end = new Date();
@@ -282,10 +309,7 @@ function PublicationToolbar({
               <SelectItem value="archive">{locale === 'fr' ? 'Archiver' : 'Archive'}</SelectItem>
             </SelectContent>
           </Select>
-          <BrandPrimaryButton onClick={() => openPublicationComposer({ type: 'article' })}>
-            <Plus className="h-4 w-4" />
-            {t.editorialCalendar.createPublication}
-          </BrandPrimaryButton>
+          <CreatePublicationMenu />
         </>
       }
     >
@@ -320,17 +344,13 @@ function CalendarToolbar({
   onThisWeek: () => void;
 }) {
   const { t, locale } = useTranslation();
-  const openPublicationComposer = useAppStore((s) => s.openPublicationComposer);
   const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
   const weekRangeLabel = formatWeekRange(locale, weekStart, weekEnd);
 
   return (
     <ViewToolbar
       actions={
-        <BrandPrimaryButton onClick={() => openPublicationComposer({ type: 'article' })}>
-          <Plus className="h-4 w-4" />
-          {t.editorialCalendar.createPublication}
-        </BrandPrimaryButton>
+        <CreatePublicationMenu />
       }
     >
       <ViewSearchInput
@@ -393,10 +413,43 @@ function CalendarToolbar({
   );
 }
 
-function PublicationListTable({ search }: { search: string }) {
-  const { t } = useTranslation();
+function PublicationListTable({
+  search,
+  typeFilter,
+}: {
+  search: string;
+  typeFilter?: ContentType;
+}) {
+  const { t, locale } = useTranslation();
+  const activeTenantId = useAppStore((s) => s.activeTenantId);
+  const setSelectedContent = useAppStore((s) => s.setSelectedContent);
+  const setContentDetailOpen = useAppStore((s) => s.setContentDetailOpen);
+  const { data: allContent = [] } = useContent({
+    tenantId: activeTenantId,
+    type: typeFilter,
+  });
   const [selectedAll, setSelectedAll] = useState(false);
-  const rows = useMemo(() => (search.trim() ? [] : []), [search]);
+
+  const rows = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return allContent.filter((item) => {
+      if (!query) return true;
+      return (
+        item.title.toLowerCase().includes(query) ||
+        item.type.toLowerCase().includes(query)
+      );
+    });
+  }, [allContent, search]);
+
+  const statusLabel = (status: string) => {
+    const loc = locale as 'fr' | 'en';
+    return contentStatusLabels[loc]?.[status] || status;
+  };
+
+  const openContent = (content: ContentItem) => {
+    setSelectedContent(content as unknown as Record<string, unknown>);
+    setContentDetailOpen(true);
+  };
 
   return (
     <ViewDataTable transparent={false}>
@@ -411,27 +464,55 @@ function PublicationListTable({ search }: { search: string }) {
         {rows.length === 0 ? (
           <ViewDataTableEmpty colSpan={5} message={t.editorialCalendar.noData} />
         ) : (
-          rows.map((row) => (
-            <ViewDataTableRow key={String(row)}>
-              <ViewDataTableCheckboxCell />
-              <ViewDataTableCell />
-              <ViewDataTableCell />
-              <ViewDataTableCell />
-              <ViewDataTableCell />
-            </ViewDataTableRow>
-          ))
+          rows.map((row) => {
+            const statusColor =
+              contentStatusColors[row.status] || contentStatusColors.draft;
+            const dateStr = row.scheduledAt || row.publishedAt || row.createdAt;
+            return (
+              <ViewDataTableRow key={row.id} onClick={() => openContent(row)}>
+                <ViewDataTableCheckboxCell />
+                <ViewDataTableCell className="text-xs text-muted-foreground">
+                  {dateStr
+                    ? new Date(dateStr).toLocaleDateString(
+                        locale === 'fr' ? 'fr-FR' : 'en-US',
+                        { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }
+                      )
+                    : '—'}
+                </ViewDataTableCell>
+                <ViewDataTableCell>
+                  <p className="font-medium truncate">{row.title}</p>
+                  <p className="text-xs text-muted-foreground capitalize">{row.type}</p>
+                </ViewDataTableCell>
+                <ViewDataTableCell className="text-xs text-muted-foreground capitalize">
+                  {row.type}
+                </ViewDataTableCell>
+                <ViewDataTableCell>
+                  <span
+                    className={cn(
+                      'inline-flex rounded-full border px-2 py-0.5 text-[10px] font-medium',
+                      statusColor.bg,
+                      statusColor.text,
+                      statusColor.border
+                    )}
+                  >
+                    {statusLabel(row.status)}
+                  </span>
+                </ViewDataTableCell>
+              </ViewDataTableRow>
+            );
+          })
         )}
       </ViewDataTableBody>
     </ViewDataTable>
   );
 }
 
-function ListTabContent() {
+function ListTabContent({ typeFilter }: { typeFilter?: ContentType }) {
   const [search, setSearch] = useState('');
   return (
     <ViewTabPanel>
       <PublicationToolbar search={search} onSearchChange={setSearch} />
-      <PublicationListTable search={search} />
+      <PublicationListTable search={search} typeFilter={typeFilter} />
     </ViewTabPanel>
   );
 }
@@ -815,14 +896,73 @@ function CalendarTabContent() {
 }
 
 export function EditorialCalendarView() {
-  const [activeTab, setActiveTab] = useState<EditorialTab>('calendar');
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[40vh] items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        </div>
+      }
+    >
+      <EditorialCalendarViewContent />
+    </Suspense>
+  );
+}
+
+function EditorialCalendarViewContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const { t } = useTranslation();
+
+  const tabParam = searchParams.get('tab');
+  const activeTab: EditorialTab = isEditorialTab(tabParam) ? tabParam : 'calendar';
+  const typeParam = searchParams.get('type');
+  const typeFilter =
+    typeParam === 'newsletter' ||
+    typeParam === 'article' ||
+    typeParam === 'announcement' ||
+    typeParam === 'communique' ||
+    typeParam === 'campaign'
+      ? typeParam
+      : undefined;
+
+  const setActiveTab = useCallback(
+    (tab: EditorialTab) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('tab', tab);
+      router.replace(`/editorial-calendar?${params.toString()}`, { scroll: false });
+    },
+    [router, searchParams]
+  );
+
+  useEffect(() => {
+    if (searchParams.get('create') === 'true') {
+      const type = searchParams.get('composerType');
+      const store = useAppStore.getState();
+      store.openPublicationComposer(
+        type === 'newsletter' ||
+          type === 'article' ||
+          type === 'announcement' ||
+          type === 'communique' ||
+          type === 'social'
+          ? { type }
+          : undefined
+      );
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('create');
+      params.delete('composerType');
+      router.replace(`/editorial-calendar?${params.toString()}`, { scroll: false });
+    }
+  }, [searchParams, router]);
 
   return (
     <ViewShell>
+      <UpgradePlanBanner variant="editorialCalendar" />
       <EditorialSubNav activeTab={activeTab} onTabChange={setActiveTab} />
-      {activeTab === 'list' && <ListTabContent />}
+      {activeTab === 'list' && <ListTabContent typeFilter={typeFilter} />}
       {activeTab === 'calendar' && <CalendarTabContent />}
+      {activeTab === 'queue' && <SchedulingQueuePanel />}
+      {activeTab === 'channels' && <ChannelsPanel />}
       {activeTab === 'library' && (
         <ViewTabPanel>
           <ViewPlaceholderPanel

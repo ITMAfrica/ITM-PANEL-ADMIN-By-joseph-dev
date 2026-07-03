@@ -46,7 +46,54 @@ export function useCreateContent() {
       if (!res.ok) throw new Error('Failed to create content');
       return res.json();
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['content'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['content'] });
+      qc.invalidateQueries({ queryKey: ['dashboard-summary'] });
+    },
+  });
+}
+
+function invalidateContentQueries(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ['content'] });
+  qc.invalidateQueries({ queryKey: ['dashboard-summary'] });
+}
+
+export function useApproveContent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiFetch(`/content/${id}/approve`, { method: 'POST' });
+      if (!res.ok) throw new Error('Failed to approve content');
+      return res.json() as Promise<ContentItem>;
+    },
+    onSuccess: () => invalidateContentQueries(qc),
+  });
+}
+
+export function useRejectContent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, reason }: { id: string; reason?: string }) => {
+      const res = await apiFetch(`/content/${id}/reject`, {
+        method: 'POST',
+        body: JSON.stringify({ reason }),
+      });
+      if (!res.ok) throw new Error('Failed to reject content');
+      return res.json() as Promise<ContentItem>;
+    },
+    onSuccess: () => invalidateContentQueries(qc),
+  });
+}
+
+export function useSubmitContentForReview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiFetch(`/content/${id}/submit-for-review`, { method: 'POST' });
+      if (!res.ok) throw new Error('Failed to submit content for review');
+      return res.json() as Promise<ContentItem>;
+    },
+    onSuccess: () => invalidateContentQueries(qc),
   });
 }
 

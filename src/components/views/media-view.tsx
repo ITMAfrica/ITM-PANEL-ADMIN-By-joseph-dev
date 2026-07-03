@@ -4,7 +4,6 @@ import { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +12,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   ImageIcon,
-  Upload,
   Grid3X3,
   List,
   FileText,
@@ -24,9 +22,7 @@ import {
   Download,
   Trash2,
   Copy,
-  HardDrive,
   File,
-  CloudUpload,
 } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
 import { useAppStore } from '@/lib/store';
@@ -34,13 +30,13 @@ import { useMedia } from '@/hooks/use-media';
 import { useUserLookup } from '@/hooks/use-user-lookup';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { UpgradePlanBanner } from '@/components/upgrade-plan-banner';
 import {
   ViewShell,
   ViewSubNav,
   ViewTabPanel,
   ViewToolbar,
   ViewSearchInput,
-  BrandPrimaryButton,
   ViewOutlineButton,
   type ViewTab,
 } from '@/components/view-layout';
@@ -94,7 +90,6 @@ export function MediaView() {
   const [activeTab, setActiveTab] = useState<MediaTab>('all');
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [isDragging, setIsDragging] = useState(false);
 
   const filtered = useMemo(() => {
     let result = tenantMedia;
@@ -108,10 +103,6 @@ export function MediaView() {
     return result;
   }, [tenantMedia, search, activeTab]);
 
-  const totalStorage = 100 * 1024 * 1024 * 1024;
-  const usedStorage = tenantMedia.reduce((sum, m) => sum + m.size, 0);
-  const storagePercent = Math.round((usedStorage / totalStorage) * 100);
-
   const tabs: ViewTab<MediaTab>[] = [
     { id: 'all', label: t.media.all, icon: <ImageIcon className="h-3.5 w-3.5" /> },
     { id: 'image', label: t.media.images, icon: <ImageIcon className="h-3.5 w-3.5" /> },
@@ -122,59 +113,10 @@ export function MediaView() {
 
   return (
     <ViewShell>
+      <UpgradePlanBanner variant="media" />
       <ViewSubNav tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
       <ViewTabPanel>
-        <Card className="border-border/50 shadow-sm overflow-hidden">
-          <div className="h-1 bg-gradient-to-r from-[oklch(0.55_0.18_250)] to-[oklch(0.65_0.18_250)]" />
-          <CardContent className="p-3 sm:p-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-[oklch(0.55_0.18_250/0.1)] border border-[oklch(0.55_0.18_250/0.15)]">
-                  <HardDrive className="h-4 w-4 text-[oklch(0.55_0.18_250)]" />
-                </div>
-                <span className="text-sm font-medium">{t.media.storageUsage}</span>
-              </div>
-              <span className="text-sm text-muted-foreground">
-                {formatFileSize(usedStorage)} / {formatFileSize(totalStorage)}
-              </span>
-            </div>
-            <Progress value={storagePercent} className="h-2 [&>div]:bg-gradient-to-r [&>div]:from-[oklch(0.55_0.18_250)] [&>div]:to-[oklch(0.65_0.18_250)]" />
-            <p className="text-xs text-muted-foreground mt-1.5">{storagePercent}% {t.media.storageUsage.toLowerCase()}</p>
-          </CardContent>
-        </Card>
-
-        <div
-          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-          onDragLeave={() => setIsDragging(false)}
-          onDrop={(e) => { e.preventDefault(); setIsDragging(false); }}
-          className={cn(
-            'relative border-2 border-dashed rounded-xl p-6 text-center transition-all duration-300',
-            isDragging
-              ? 'border-[oklch(0.55_0.18_250)] bg-[oklch(0.55_0.18_250/0.05)] scale-[1.01]'
-              : 'border-border/50 hover:border-[oklch(0.55_0.18_250/0.3)] hover:bg-muted/20'
-          )}
-        >
-          <motion.div
-            animate={isDragging ? { scale: 1.1, y: -4 } : { scale: 1, y: 0 }}
-            transition={{ duration: 0.2 }}
-            className="flex flex-col items-center gap-2"
-          >
-            <div className={cn('p-3 rounded-2xl transition-colors', isDragging ? 'bg-[oklch(0.55_0.18_250/0.15)]' : 'bg-muted/50')}>
-              <CloudUpload className={cn('h-6 w-6', isDragging ? 'text-[oklch(0.55_0.18_250)]' : 'text-muted-foreground')} />
-            </div>
-            <p className="text-sm font-medium">{t.media.dropFilesHere}</p>
-            <p className="text-xs text-muted-foreground">{t.media.orClick}</p>
-          </motion.div>
-        </div>
-
-        <ViewToolbar
-          actions={
-            <BrandPrimaryButton>
-              <Upload className="h-4 w-4" />
-              {t.media.upload}
-            </BrandPrimaryButton>
-          }
-        >
+        <ViewToolbar>
           <ViewSearchInput
             value={search}
             onChange={setSearch}

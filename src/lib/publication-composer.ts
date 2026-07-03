@@ -102,21 +102,8 @@ export function isCmsType(type: PublicationComposerType): boolean {
   return type !== 'social';
 }
 
-export function getPageForType(type: PublicationComposerType): PageId | null {
-  switch (type) {
-    case 'newsletter':
-      return 'newsletters';
-    case 'article':
-      return 'articles';
-    case 'announcement':
-      return 'announcements';
-    case 'communique':
-      return 'library';
-    case 'social':
-      return 'editorial-calendar';
-    default:
-      return null;
-  }
+export function getPageForType(_type: PublicationComposerType): PageId {
+  return 'editorial-calendar';
 }
 
 export interface PublicationComposerPayload {

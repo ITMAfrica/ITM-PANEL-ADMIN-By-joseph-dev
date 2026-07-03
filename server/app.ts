@@ -15,6 +15,7 @@ import distributionChannelsRoutes from './routes/distribution-channels';
 import templatesRoutes from './routes/templates';
 import mediaRoutes from './routes/media';
 import activityRoutes from './routes/activity';
+import dashboardRoutes from './routes/dashboard';
 import { publicRouter, trackRouter } from './routes/tracking';
 
 export function createApp() {
@@ -44,6 +45,7 @@ export function createApp() {
   app.use('/api/templates', templatesRoutes);
   app.use('/api/media', mediaRoutes);
   app.use('/api/activity', activityRoutes);
+  app.use('/api/dashboard', dashboardRoutes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

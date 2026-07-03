@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -40,9 +40,7 @@ import {
   Sparkles,
   CheckCircle2,
   XCircle,
-  FileText,
   Bell,
-  Send,
   Tag,
   UserPlus,
   CalendarClock,
@@ -50,7 +48,6 @@ import {
   Mail,
   LayoutList,
   ArrowRightLeft,
-  Repeat,
 } from 'lucide-react';
 import { useAutomations } from '@/hooks/use-automations';
 import { useAppStore } from '@/lib/store';
@@ -96,67 +93,43 @@ const automationTemplates = [
     id: 'tpl-1',
     nameKey: 'autoAssignByPriority' as const,
     descKey: 'autoAssignByPriorityDesc' as const,
-    icon: ArrowRightLeft,
     trigger: 'autoAssignByPriority' as const,
     action: 'actionAssignMember' as const,
-    color: 'text-blue-600',
-    bg: 'bg-blue-500/10',
-    border: 'border-blue-500/20',
   },
   {
     id: 'tpl-2',
     nameKey: 'sendDeadlineReminders' as const,
     descKey: 'sendDeadlineRemindersDesc' as const,
-    icon: Bell,
     trigger: 'triggerDeadlineApproaching' as const,
     action: 'actionSendNotification' as const,
-    color: 'text-amber-600',
-    bg: 'bg-amber-500/10',
-    border: 'border-amber-500/20',
   },
   {
     id: 'tpl-3',
     nameKey: 'moveCompletedToDone' as const,
     descKey: 'moveCompletedToDoneDesc' as const,
-    icon: CheckCircle2,
     trigger: 'triggerStatusChanged' as const,
     action: 'actionMoveContent' as const,
-    color: 'text-blue-600',
-    bg: 'bg-blue-500/10',
-    border: 'border-blue-500/20',
   },
   {
     id: 'tpl-4',
     nameKey: 'notifyOnStatusChange' as const,
     descKey: 'notifyOnStatusChangeDesc' as const,
-    icon: Send,
     trigger: 'triggerStatusChanged' as const,
     action: 'actionSendNotification' as const,
-    color: 'text-cyan-600',
-    bg: 'bg-cyan-500/10',
-    border: 'border-cyan-500/20',
   },
   {
     id: 'tpl-5',
     nameKey: 'weeklyProgressReport' as const,
     descKey: 'weeklyProgressReportDesc' as const,
-    icon: FileText,
     trigger: 'triggerDeadlineApproaching' as const,
     action: 'actionSendEmail' as const,
-    color: 'text-rose-600',
-    bg: 'bg-rose-500/10',
-    border: 'border-rose-500/20',
   },
   {
     id: 'tpl-6',
     nameKey: 'autoCreateRecurringTasks' as const,
     descKey: 'autoCreateRecurringTasksDesc' as const,
-    icon: Repeat,
     trigger: 'triggerContentCreated' as const,
     action: 'actionAddTag' as const,
-    color: 'text-orange-600',
-    bg: 'bg-orange-500/10',
-    border: 'border-orange-500/20',
   },
 ];
 
@@ -428,20 +401,13 @@ export function AutomationsView() {
             {t.automations.browseTemplates}
           </h3>
           <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {automationTemplates.map((tpl) => {
-              const IconComp = tpl.icon;
-              return (
+            {automationTemplates.map((tpl) => (
                 <motion.div key={tpl.id} variants={item}>
                   <Card className="group hover:shadow-md transition-all duration-300 border-border/60 overflow-hidden">
                     <CardContent className="p-3 sm:p-4">
-                      <div className="flex items-start gap-3 mb-3">
-                        <div className={cn('p-2 rounded-xl border shrink-0', tpl.bg, tpl.border)}>
-                          <IconComp className={cn('h-4 w-4', tpl.color)} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-xs font-semibold">{t.automations[tpl.nameKey]}</h4>
-                          <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{t.automations[tpl.descKey]}</p>
-                        </div>
+                      <div className="mb-3">
+                        <h4 className="text-xs font-semibold">{t.automations[tpl.nameKey]}</h4>
+                        <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{t.automations[tpl.descKey]}</p>
                       </div>
 
                       <div className="flex items-center gap-1.5 mb-3">
@@ -466,8 +432,7 @@ export function AutomationsView() {
                     </CardContent>
                   </Card>
                 </motion.div>
-              );
-            })}
+            ))}
           </motion.div>
         </div>
 

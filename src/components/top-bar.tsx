@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { memo } from 'react';
+import { Fragment, memo } from 'react';
 import { useAppStore } from '@/lib/store';
 import { useShallow } from 'zustand/react/shallow';
 import type { PublicationComposerType } from '@/lib/publication-composer';
@@ -54,6 +54,7 @@ import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   SECTION_NAV,
+  shouldShowAppSidebar,
   HEADER_PAGE_NAV,
   getSectionForPage,
   type SectionKey,
@@ -153,14 +154,19 @@ export function TopBar() {
     : '';
 
   const getSectionLabel = (key: SectionKey): string =>
-    t.sidebar[key as keyof typeof t.sidebar] || key;
+    t.topbar?.sections?.[key] || key;
 
   const openComposerWithType = (type?: PublicationComposerType) => {
+    setActivePage('editorial-calendar');
     openComposer({ type });
   };
 
+  const showMobileSidebar = shouldShowAppSidebar(activePage);
+
   const pageTitle =
-    sectionKey && activePage !== 'dashboard' ? (
+    activePage === 'editorial-calendar' ? (
+      <span>{getPageName(activePage)}</span>
+    ) : sectionKey && activePage !== 'dashboard' ? (
       <>
         <span className="font-medium text-white/55">{sectionName}</span>
         <span className="mx-1.5 text-white/30" aria-hidden>
@@ -173,7 +179,9 @@ export function TopBar() {
     );
 
   const pageTitleLabel =
-    sectionKey && activePage !== 'dashboard'
+    activePage === 'editorial-calendar'
+      ? getPageName(activePage)
+      : sectionKey && activePage !== 'dashboard'
       ? `${sectionName} · ${getPageName(activePage)}`
       : getPageName(activePage);
 
@@ -195,7 +203,7 @@ export function TopBar() {
 
       <div className="flex w-fit max-w-full items-center gap-2 lg:gap-3 min-w-0 overflow-hidden justify-self-start">
         {/* Mobile hamburger menu — home page only */}
-        {activePage === 'dashboard' && (
+        {showMobileSidebar && (
           <Button
             variant="ghost"
             size="icon"
@@ -242,7 +250,35 @@ export function TopBar() {
         {SECTION_NAV.map(({ key, defaultPage }) => {
           const isActive = sectionKey === key;
           return (
-            <Tooltip key={key}>
+            <Fragment key={key}>
+              {key === 'analysis' &&
+                HEADER_PAGE_NAV.map(({ pageId, icon: Icon }) => {
+                  const isPageActive = activePage === pageId;
+                  return (
+                    <Tooltip key={pageId}>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => setActivePage(pageId)}
+                          className={topBarIconBtn(
+                            isPageActive
+                              ? 'bg-white/15 text-white shadow-sm ring-1 ring-white/20'
+                              : 'text-white/55 hover:text-white hover:bg-white/10'
+                          )}
+                          aria-label={getPageName(pageId)}
+                        >
+                          {pageId === 'editorial-calendar' ? (
+                            <AnimatedCalendar isActive={isPageActive} />
+                          ) : (
+                            <Icon className="h-5 w-5" />
+                          )}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{getPageName(pageId)}</TooltipContent>
+                    </Tooltip>
+                  );
+                })}
+              <Tooltip>
                 <TooltipTrigger asChild>
                   <button
                     type="button"
@@ -258,35 +294,10 @@ export function TopBar() {
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>{getSectionLabel(key)}</TooltipContent>
-            </Tooltip>
+              </Tooltip>
+            </Fragment>
           );
         })}
-        {HEADER_PAGE_NAV.length > 0 && (
-          <>
-            {HEADER_PAGE_NAV.map(({ pageId }) => {
-              const isActive = activePage === pageId;
-              return (
-                <Tooltip key={pageId}>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        onClick={() => setActivePage(pageId)}
-                        className={topBarIconBtn(
-                          isActive
-                            ? 'bg-white/15 text-white shadow-sm ring-1 ring-white/20'
-                            : 'text-white/55 hover:text-white hover:bg-white/10'
-                        )}
-                        aria-label={getPageName(pageId)}
-                      >
-                        <AnimatedCalendar isActive={isActive} />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>{getPageName(pageId)}</TooltipContent>
-                </Tooltip>
-              );
-            })}
-          </>
-        )}
       </nav>
 
       <div className="flex items-center justify-end gap-1 lg:gap-1.5 min-w-0 self-center">

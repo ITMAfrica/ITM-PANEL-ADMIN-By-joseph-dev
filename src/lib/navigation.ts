@@ -1,10 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   LayoutDashboard,
-  Mail,
-  FileText,
-  Megaphone,
-  Target,
   Calendar,
   BookOpen,
   ImageIcon,
@@ -12,8 +8,6 @@ import {
   FilePen,
   CheckCircle,
   Archive,
-  Clock,
-  Radio,
   Zap,
   BarChart3,
   PieChart,
@@ -43,16 +37,7 @@ export const SECTION_NAV: { key: SectionKey; icon: LucideIcon; defaultPage: Page
 ];
 
 export const SECTION_ITEMS: Record<SectionKey, NavItemDef[]> = {
-  communication: [
-    { icon: LayoutDashboard, pageId: 'dashboard' },
-    { icon: Mail, pageId: 'newsletters' },
-    { icon: FileText, pageId: 'articles' },
-    { icon: Megaphone, pageId: 'announcements' },
-    { icon: Target, pageId: 'campaigns' },
-    { icon: Calendar, pageId: 'editorial-calendar' },
-    { icon: Clock, pageId: 'scheduling' },
-    { icon: Radio, pageId: 'channels' },
-  ],
+  communication: [{ icon: LayoutDashboard, pageId: 'dashboard' }],
   contentManagement: [
     { icon: BookOpen, pageId: 'library' },
     { icon: ImageIcon, pageId: 'media' },
@@ -81,7 +66,6 @@ export const PAGE_SECTION_MAP: Partial<Record<PageId, SectionKey>> = {
   articles: 'communication',
   announcements: 'communication',
   campaigns: 'communication',
-  'editorial-calendar': 'communication',
   scheduling: 'communication',
   channels: 'communication',
   library: 'contentManagement',
@@ -99,7 +83,21 @@ export const PAGE_SECTION_MAP: Partial<Record<PageId, SectionKey>> = {
   automations: 'administration',
 };
 
-/** Quick-access pages always shown in the top bar (in addition to section icons). */
+/** Pages that show the Metricool-style dashboard sidebar (platforms, tools). */
+export const DASHBOARD_SIDEBAR_PAGES: readonly PageId[] = ['dashboard'] as const;
+
+const DASHBOARD_SIDEBAR_PAGE_SET = new Set<string>(DASHBOARD_SIDEBAR_PAGES);
+
+export function isDashboardSidebarPage(page: PageId): boolean {
+  return DASHBOARD_SIDEBAR_PAGE_SET.has(page);
+}
+
+/** Whether the left section sidebar should be visible for this page. */
+export function shouldShowAppSidebar(page: PageId): boolean {
+  return getSectionForPage(page) !== null;
+}
+
+/** Quick-access pages in the top bar center nav (beside section icons). */
 export const HEADER_PAGE_NAV: NavItemDef[] = [
   { icon: Calendar, pageId: 'editorial-calendar' },
 ];

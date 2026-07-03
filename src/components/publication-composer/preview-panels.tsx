@@ -278,7 +278,7 @@ export function PreviewPanels({
   const TypeLabelIcon = typeConfig?.icon;
 
   return (
-    <aside className="flex min-h-0 w-full flex-1 flex-col border-t border-[#E0E4E8] bg-[#EEF1F4] lg:h-full lg:w-[380px] lg:flex-none lg:shrink-0 lg:border-t-0 xl:w-[420px]">
+    <aside className="hidden min-h-0 flex-col border-t border-[#E0E4E8] bg-[#EEF1F4] lg:flex lg:h-full lg:w-[380px] lg:flex-none lg:shrink-0 lg:border-t-0 xl:w-[420px]">
       <div className="flex shrink-0 items-center justify-between border-b border-[#E0E4E8] px-4 py-3">
         <span className="text-sm font-semibold text-[#1D141F]">{pc.preview}</span>
         <PreviewModeToggle
