@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { useDistributionChannels } from '@/hooks/use-distribution-channels';
+import { useSubscriberCount } from '@/hooks/use-content';
 import { useAppStore } from '@/lib/store';
 import { useTranslation } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
@@ -51,6 +52,7 @@ export function ChannelsView() {
   const { t } = useTranslation();
   const activeTenantId = useAppStore((s) => s.activeTenantId);
   const { data: channels = EMPTY_ARRAY } = useDistributionChannels(activeTenantId);
+  const { data: liveSubscriberCount } = useSubscriberCount(activeTenantId);
   const [activeTab, setActiveTab] = useState<ChannelTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [channelOverrides, setChannelOverrides] = useState<Record<string, boolean>>({});
@@ -71,7 +73,8 @@ export function ChannelsView() {
 
   const totalChannels = channels.length;
   const activeChannels = Object.values(channelStates).filter(Boolean).length;
-  const totalSubscribers = channels.reduce((sum, ch) => sum + ch.subscriberCount, 0);
+  const totalSubscribers =
+    liveSubscriberCount ?? channels.reduce((sum, ch) => sum + ch.subscriberCount, 0);
 
   const toggleChannel = (id: string) => {
     setChannelOverrides((prev) => ({ ...prev, [id]: !channelStates[id] }));
@@ -135,7 +138,11 @@ export function ChannelsView() {
           </ViewDataTableHeader>
           <ViewDataTableBody>
             {filteredChannels.length === 0 ? (
-              <ViewDataTableEmpty colSpan={7} message={t.distributionChannels.noChannels} />
+              <ViewDataTableEmpty
+                colSpan={7}
+                message={t.distributionChannels.noChannels}
+                illustrationId="channels"
+              />
             ) : (
               filteredChannels.map((channel) => {
                 const config = channelTypeConfig[channel.type] || channelTypeConfig.email;

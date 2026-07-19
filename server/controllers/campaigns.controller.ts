@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { db } from '../lib/prisma';
 import { parseChannels } from '../services/mappers/json';
-import { userCanAccessTenant } from '../lib/tenant-access';
+import { getUserTenantRole, isSuperAdmin, roleMeetsOrExceeds, userCanAccessTenant } from '../lib/tenant-access';
 
 function mapCampaign(c: {
   id: string;
@@ -46,6 +46,19 @@ async function getAuthorizedCampaign(req: Request, id: string) {
   return row;
 }
 
+async function getAuthorizedCampaignWithRole(
+  req: Request,
+  id: string,
+  requiredRole: string
+) {
+  const row = await getAuthorizedCampaign(req, id);
+  if (!row || !req.user) return null;
+  const effectiveRole = await getUserTenantRole(req.user, row.tenantId);
+  if (!effectiveRole) return null;
+  if (isSuperAdmin(req.user) || roleMeetsOrExceeds(effectiveRole, requiredRole)) return row;
+  return null;
+}
+
 export async function list(req: Request, res: Response) {
   try {
     const tenantId = req.authorizedTenantId!;
@@ -85,7 +98,7 @@ export async function create(req: Request, res: Response) {
 
 export async function update(req: Request, res: Response) {
   try {
-    const existing = await getAuthorizedCampaign(req, req.params.id as string);
+    const existing = await getAuthorizedCampaignWithRole(req, req.params.id as string, 'editor');
     if (!existing) {
       res.status(404).json({ error: 'Not found' });
       return;
@@ -104,13 +117,13 @@ export async function update(req: Request, res: Response) {
     res.json(mapCampaign(row));
   } catch (error) {
     console.error('PATCH /api/campaigns', error);
-    res.status(404).json({ error: 'Failed to update campaign' });
+    res.status(500).json({ error: 'Failed to update campaign' });
   }
 }
 
 export async function remove(req: Request, res: Response) {
   try {
-    const existing = await getAuthorizedCampaign(req, req.params.id as string);
+    const existing = await getAuthorizedCampaignWithRole(req, req.params.id as string, 'tenant_admin');
     if (!existing) {
       res.status(404).json({ error: 'Not found' });
       return;
@@ -120,6 +133,6 @@ export async function remove(req: Request, res: Response) {
     res.json({ ok: true });
   } catch (error) {
     console.error('DELETE /api/campaigns', error);
-    res.status(404).json({ error: 'Failed to delete campaign' });
+    res.status(500).json({ error: 'Failed to delete campaign' });
   }
 }

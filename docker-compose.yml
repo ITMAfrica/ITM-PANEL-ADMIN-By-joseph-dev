@@ -36,7 +36,8 @@ services:
     environment:
       DATABASE_URL: "postgresql://itm:itm_password@postgres:5432/itm_panel"
       AUTH_SECRET: ${AUTH_SECRET:-change-me-in-production}
-      PUBLIC_API_KEY: ${PUBLIC_API_KEY}
+      PUBLIC_API_KEY: ${PUBLIC_API_KEY:-dev-api-key}
+      ALLOW_PUBLIC_REGISTER: ${ALLOW_PUBLIC_REGISTER:-true}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3002}
       APP_URL: ${APP_URL:-http://localhost:3002}
       NODE_ENV: development
@@ -44,13 +45,136 @@ services:
       PORT: "3001"
       UPLOADS_DIR: "/app/uploads"
       MAX_UPLOAD_SIZE_MB: "10"
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-console}
+      EMAIL_FROM: ${EMAIL_FROM:-newsletter@itm.example}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-ITM Newsletter}
+      SMTP_HOST: ${SMTP_HOST:-smtp.hostinger.com}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      ITM_SEND_EMAIL_URL: ${ITM_SEND_EMAIL_URL:-http://localhost:5001}
+      AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING:-}
+      AZURE_STORAGE_ACCOUNT: ${AZURE_STORAGE_ACCOUNT:-}
+      AZURE_STORAGE_ACCESS_KEY: ${AZURE_STORAGE_ACCESS_KEY:-}
+      AZURE_STORAGE_CONTAINER: ${AZURE_STORAGE_CONTAINER:-media}
+      AZURE_STORAGE_CDN_URL: ${AZURE_STORAGE_CDN_URL:-}
     volumes:
       - ./server:/app/server:delegated
       - ./prisma:/app/prisma:delegated
       - ./uploads:/app/uploads
       - ./package.json:/app/package.json:ro
-      - ./bun.lock:/app/bun.lock:ro
+      - ./package-lock.json:/app/package-lock.json:ro
       - /app/node_modules
+    # Stable public DNS — Docker Desktop's embedded resolver (127.0.0.11)
+    # intermittently fails with getaddrinfo ENOTFOUND for external SMTP hosts.
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - itm-network
+
+  # ============================================
+  # pgAdmin 4 — interface web de la base
+  #   http://localhost:5050
+  #   email: admin@itm.local / mot de passe: admin
+  # ============================================
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: itm-pgadmin
+    restart: unless-stopped
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@itm.dev
+      PGADMIN_DEFAULT_PASSWORD: admin
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - itm-network
+
+  # ============================================
+  # Tests API (smoke) — one-shot, profil "test"
+  #   docker compose --profile test run --rm test
+  #   bash scripts/test.sh
+  # ============================================
+  test:
+    build:
+      context: .
+      dockerfile: server/Dockerfile.dev
+    profiles:
+      - test
+    environment:
+      DATABASE_URL: "postgresql://itm:itm_password@postgres:5432/itm_panel"
+      AUTH_SECRET: ${AUTH_SECRET:-test-secret-minimum-32-characters-long}
+      PUBLIC_API_KEY: ${PUBLIC_API_KEY:-test-api-key}
+      ALLOW_PUBLIC_REGISTER: "false"
+      NODE_ENV: test
+      AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING:-}
+      AZURE_STORAGE_ACCOUNT: ${AZURE_STORAGE_ACCOUNT:-}
+      AZURE_STORAGE_ACCESS_KEY: ${AZURE_STORAGE_ACCESS_KEY:-}
+      AZURE_STORAGE_CONTAINER: ${AZURE_STORAGE_CONTAINER:-media}
+      AZURE_STORAGE_CDN_URL: ${AZURE_STORAGE_CDN_URL:-}
+    volumes:
+      - ./server:/app/server:delegated
+      - ./src:/app/src:ro
+      - ./prisma:/app/prisma:delegated
+      - ./package.json:/app/package.json:ro
+      - ./package-lock.json:/app/package-lock.json:ro
+    command: ["npm", "run", "test"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - itm-network
+
+  # ============================================
+  # API Express (production) — image buildée, pas de hot reload
+  #   docker compose --profile prod up -d api-prod
+  # Le scheduler interne de dispatch tourne tant que le conteneur est actif.
+  # ============================================
+  api-prod:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    container_name: itm-api-prod
+    restart: unless-stopped
+    profiles:
+      - prod
+    ports:
+      - "3001:3001"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://itm:itm_password@postgres:5432/itm_panel}
+      AUTH_SECRET: ${AUTH_SECRET:-change-me-in-production}
+      PUBLIC_API_KEY: ${PUBLIC_API_KEY:-change-me-in-production}
+      ALLOW_PUBLIC_REGISTER: ${ALLOW_PUBLIC_REGISTER:-false}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3002}
+      APP_URL: ${APP_URL:-http://localhost:3002}
+      NODE_ENV: production
+      HOST: "0.0.0.0"
+      PORT: "3001"
+      UPLOADS_DIR: "/app/uploads"
+      MAX_UPLOAD_SIZE_MB: "10"
+      DISPATCH_INTERVAL_MS: ${DISPATCH_INTERVAL_MS:-900000}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-console}
+      EMAIL_FROM: ${EMAIL_FROM:-newsletter@itm.example}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-ITM Newsletter}
+      SMTP_HOST: ${SMTP_HOST:-smtp.hostinger.com}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      ITM_SEND_EMAIL_URL: ${ITM_SEND_EMAIL_URL:-http://localhost:5001}
+      AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING:-}
+      AZURE_STORAGE_ACCOUNT: ${AZURE_STORAGE_ACCOUNT:-}
+      AZURE_STORAGE_ACCESS_KEY: ${AZURE_STORAGE_ACCESS_KEY:-}
+      AZURE_STORAGE_CONTAINER: ${AZURE_STORAGE_CONTAINER:-media}
+      AZURE_STORAGE_CDN_URL: ${AZURE_STORAGE_CDN_URL:-}
+    volumes:
+      - ./uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -59,6 +183,8 @@ services:
 
 volumes:
   pgdata:
+    driver: local
+  pgadmin-data:
     driver: local
 
 networks:

@@ -4,14 +4,12 @@ import type { ComponentType } from 'react';
 import type { SectionKey } from '@/lib/navigation';
 import { AnimatedLayoutDashboard } from './animated-layout-dashboard';
 import { AnimatedBookOpen } from './animated-book-open';
-import { AnimatedBarChart } from './animated-bar-chart';
 import { AnimatedShield } from './animated-shield';
 import type { AnimatedNavIconProps } from './nav-icon-shared';
 
 const SECTION_ICONS: Record<SectionKey, ComponentType<AnimatedNavIconProps>> = {
   communication: AnimatedLayoutDashboard,
   contentManagement: AnimatedBookOpen,
-  analysis: AnimatedBarChart,
   administration: AnimatedShield,
 };
 

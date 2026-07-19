@@ -15,7 +15,6 @@ import {
   ViewSearchInput,
   BrandPrimaryButton,
 } from '@/components/view-layout';
-import { ResourceAnalyticsPanel } from '@/components/resource-analytics';
 import {
   ViewDataTable,
   ViewDataTableHeader,
@@ -108,8 +107,6 @@ export function CampaignsView() {
     <ViewShell>
       <ViewSubNav tabs={navTabs} activeTab={activeStatus} onTabChange={setActiveStatus} />
       <ViewTabPanel>
-        <ResourceAnalyticsPanel resourceId="campaigns" />
-
         <ViewToolbar
           actions={
             <BrandPrimaryButton>
@@ -145,7 +142,11 @@ export function CampaignsView() {
           </ViewDataTableHeader>
           <ViewDataTableBody>
             {filteredCampaigns.length === 0 ? (
-              <ViewDataTableEmpty colSpan={7} message={t.campaigns.noResults} />
+              <ViewDataTableEmpty
+                colSpan={7}
+                message={t.campaigns.noResults}
+                illustrationId="compose-social"
+              />
             ) : (
               filteredCampaigns.map((campaign) => {
                 const statusColor = campaignStatusColors[campaign.status] || campaignStatusColors.draft;

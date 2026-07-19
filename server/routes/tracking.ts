@@ -9,5 +9,6 @@ publicRouter.get('/:id', trackingController.getPublicContentById);
 const trackRouter = Router();
 trackRouter.post('/view', validateApiKey, trackingController.trackViewEvent);
 trackRouter.post('/click', validateApiKey, trackingController.trackClickEvent);
+trackRouter.post('/acknowledge', validateApiKey, trackingController.trackAcknowledgeEvent);
 
 export { publicRouter, trackRouter };

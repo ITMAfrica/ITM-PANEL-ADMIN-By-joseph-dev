@@ -10,6 +10,7 @@ export type PageId =
   | 'announcements'
   | 'campaigns'
   | 'editorial-calendar'
+  | 'conversation'
   // Gestion de contenu
   | 'library'
   | 'media'
@@ -22,14 +23,15 @@ export type PageId =
   | 'channels'
   | 'automations'
   // Analyse
-  | 'statistics'
   | 'reports'
   // Administration
   | 'users'
   | 'roles'
   | 'tenants'
+  | 'workspace-members'
   | 'audit'
-  | 'settings';
+  | 'settings'
+  | 'documentation';
 
 // ─── Content Status (Editorial Workflow) ────────────────────────────────
 export type ContentStatus = 'draft' | 'review' | 'approved' | 'scheduled' | 'published' | 'archived';
@@ -37,7 +39,7 @@ export type ContentPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type ContentType = 'newsletter' | 'article' | 'announcement' | 'communique' | 'campaign';
 
 // ─── RBAC Roles ─────────────────────────────────────────────────────────
-export type UserRole = 'super_admin' | 'tenant_admin' | 'editor' | 'contributor' | 'reader';
+export type UserRole = 'super_admin' | 'tenant_admin' | 'editor' | 'contributor' | 'reader' | 'member';
 export type UserStatus = 'online' | 'away' | 'offline' | 'busy';
 
 // ─── Tenant ─────────────────────────────────────────────────────────────
@@ -55,6 +57,17 @@ export interface Tenant {
   createdAt: string;
 }
 
+// ─── Workspace Member ───────────────────────────────────────────────────
+export interface WorkspaceMember {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  userAvatar: string;
+  role: UserRole;
+  joinedAt: string;
+}
+
 // ─── User ───────────────────────────────────────────────────────────────
 export interface CMSUser {
   id: string;
@@ -62,6 +75,7 @@ export interface CMSUser {
   email: string;
   avatar: string;
   role: UserRole;
+  tenantRole: UserRole;
   status: UserStatus;
   tenantId: string;
   tenantName: string;
@@ -88,6 +102,11 @@ export interface ContentItem {
   viewCount: number;
   openRate?: number;
   clickRate?: number;
+}
+
+export interface ContentDetail extends ContentItem {
+  body: string;
+  metadata: Record<string, unknown>;
 }
 
 // ─── Newsletter ─────────────────────────────────────────────────────────
@@ -170,6 +189,28 @@ export interface ContentTemplate {
   createdAt: string;
 }
 
+export interface NewsletterTemplate {
+  id: string;
+  name: string;
+  description: string;
+  subject: string;
+  preheader: string;
+  thumbnail: string;
+  category: string;
+  isPremium: boolean;
+  usageCount: number;
+  body: string;
+  createdAt: string;
+}
+
+export type NewsletterSection =
+  | { type: 'hero'; title: string; subtitle: string; imageUrl: string; label?: string }
+  | { type: 'band'; label: string }
+  | { type: 'article'; title: string; imageUrl: string; text: string }
+  | { type: 'cta'; label: string; href: string }
+  | { type: 'calendar'; items: string[] }
+  | { type: 'footer'; text: string };
+
 // ─── Distribution Channel ───────────────────────────────────────────────
 export interface DistributionChannel {
   id: string;
@@ -179,6 +220,34 @@ export interface DistributionChannel {
   subscriberCount: number;
   isActive: boolean;
   lastSentAt?: string;
+}
+
+export interface Subscriber {
+  id: string;
+  email: string;
+  name: string | null;
+  tenantId: string;
+  status: 'subscribed' | 'unsubscribed';
+  createdAt: string;
+  city?: string | null;
+  country?: string | null;
+  consentNewsletter?: boolean;
+  consentPrivacy?: boolean;
+  consentTextVersion?: string | null;
+  consentedAt?: string;
+  metadata?: {
+    context?: {
+      pageUrl?: string;
+      referrer?: string;
+      siteSlug?: string;
+      utm?: Record<string, string>;
+    };
+    technical?: {
+      language?: string;
+      timezone?: string;
+      userAgent?: string;
+    };
+  };
 }
 
 // ─── Automation ─────────────────────────────────────────────────────────
@@ -238,4 +307,25 @@ export interface ContentVersion {
   authorId: string;
   createdAt: string;
   changeNote?: string;
+}
+
+// ─── Newsletter send tracking ─────────────────────────────────────────
+export interface NewsletterSendDetail {
+  id: string;
+  status: string;
+  email: string;
+  name: string | null;
+  city: string | null;
+  country: string | null;
+  openedAt: string | null;
+  clickedAt: string | null;
+  createdAt: string;
+}
+
+export interface NewsletterSendsResponse {
+  contentId: string;
+  total: number;
+  opened: number;
+  clicked: number;
+  sends: NewsletterSendDetail[];
 }

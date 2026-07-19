@@ -5,6 +5,7 @@ import { useTranslation } from '@/lib/i18n';
 import { useTemplates } from '@/hooks/use-templates';
 import { useAppStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
+import { UpgradePlanBanner } from '@/components/upgrade-plan-banner';
 import {
   ViewShell,
   ViewSubNav,
@@ -88,6 +89,7 @@ export function TemplatesView() {
 
   return (
     <ViewShell>
+      <UpgradePlanBanner variant="templates" />
       <ViewSubNav tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
       <ViewTabPanel>
         <ViewToolbar>
@@ -112,7 +114,11 @@ export function TemplatesView() {
           </ViewDataTableHeader>
           <ViewDataTableBody>
             {filtered.length === 0 ? (
-              <ViewDataTableEmpty colSpan={7} message={t.templates.noResults} />
+              <ViewDataTableEmpty
+                colSpan={7}
+                message={t.templates.noResults}
+                illustrationId="compose-newsletter"
+              />
             ) : (
               filtered.map((template) => {
                 const typeLabel =

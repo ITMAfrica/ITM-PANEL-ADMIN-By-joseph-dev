@@ -45,6 +45,7 @@ enum ContentType {
   announcement
   communique
   campaign
+  social
 }
 
 model User {
@@ -90,14 +91,18 @@ model Workspace {
   campaigns            Campaign[]
   mediaItems           MediaItem[]
   distributionChannels DistributionChannel[]
+  widgetTokens          WidgetToken[]
   contentTemplates     ContentTemplate[]
+  newsletterTemplates  NewsletterTemplate[]
+  contentChannels      ContentChannel[]
+  subscriptionSources  SubscriptionSource[]
 }
 
 model WorkspaceMember {
   id          String   @id @default(cuid())
   userId      String
   workspaceId String
-  role        String   @default("member")
+  role        UserRole @default(member)
   joinedAt    DateTime @default(now())
 
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -146,6 +151,7 @@ model Task {
 
   @@index([projectId])
   @@index([assigneeId])
+  @@index([creatorId])
 }
 
 model Subtask {
@@ -170,6 +176,7 @@ model Comment {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([taskId])
+  @@index([userId])
 }
 
 model Meeting {
@@ -273,6 +280,7 @@ model WikiPage {
   editor    User?     @relation(fields: [lastEditedBy], references: [id], onDelete: SetNull)
 
   @@index([workspaceId])
+  @@index([parentId])
 }
 
 model ActivityLog {
@@ -303,7 +311,8 @@ model Site {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
-  contents Content[]
+  contents            Content[]
+  subscriptionSources SubscriptionSource[]
 
   @@index([tenantId])
   @@index([status])
@@ -314,7 +323,6 @@ model Content {
   type        ContentType
   status      ContentStatus   @default(draft)
   title       String
-  excerpt     String          @default("")
   body        String          @default("")
   tenantId    String
   siteId      String
@@ -329,14 +337,33 @@ model Content {
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 
-  site   Site           @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  events ContentEvent[]
+  site         Site             @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  events       ContentEvent[]
+  sends        NewsletterSend[]
+  channelLinks ContentChannel[]
 
   @@index([siteId])
   @@index([tenantId])
   @@index([status])
   @@index([type])
   @@index([scheduledAt])
+}
+
+model ContentChannel {
+  id        String   @id @default(cuid())
+  contentId String
+  channelId String
+  tenantId  String
+  createdAt DateTime @default(now())
+
+  content Content             @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  channel DistributionChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  tenant  Workspace           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([contentId, channelId])
+  @@index([contentId])
+  @@index([channelId])
+  @@index([tenantId])
 }
 
 model Campaign {
@@ -381,6 +408,7 @@ model MediaItem {
   workspace Workspace @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
+  @@index([uploadedBy])
 }
 
 model DistributionChannel {
@@ -394,9 +422,113 @@ model DistributionChannel {
   lastSentAt      DateTime?
   createdAt       DateTime  @default(now())
 
-  workspace Workspace @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workspace       Workspace            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sources         SubscriptionSource[]
+  subscriptions   Subscription[]
+  contentChannels ContentChannel[]
+  widgetTokens    WidgetToken[]
 
   @@index([tenantId])
+}
+
+model Subscriber {
+  id               String           @id @default(cuid())
+  email            String
+  name             String?
+  tenantId         String
+  status           SubscriberStatus @default(subscribed)
+  unsubscribeToken String           @unique @default(cuid())
+  createdAt        DateTime         @default(now())
+
+  subscriptions Subscription[]
+  sends         NewsletterSend[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+}
+
+enum SubscriberStatus {
+  subscribed
+  unsubscribed
+}
+
+model SubscriptionSource {
+  id          String   @id @default(cuid())
+  tenantId    String
+  siteId      String?
+  channelId   String
+  formKey     String   @default("default")
+  type        String   @default("site")
+  consentedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  channel       DistributionChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  site          Site?               @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  tenant        Workspace           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  subscriptions Subscription[]
+
+  @@unique([channelId, formKey])
+  @@index([tenantId])
+  @@index([channelId])
+  @@index([siteId])
+}
+
+model Subscription {
+  id                   String           @id @default(cuid())
+  subscriberId         String
+  sourceId             String
+  channelId            String
+  status               SubscriberStatus @default(subscribed)
+  consentedAt          DateTime         @default(now())
+  consentNewsletter    Boolean          @default(false)
+  consentPrivacy       Boolean          @default(false)
+  consentTextVersion   String?
+  ipAddress            String?
+  city                 String?
+  country              String?
+  metadata             Json             @default("{}")
+  createdAt            DateTime         @default(now())
+
+  subscriber Subscriber          @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
+  source     SubscriptionSource  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  channel    DistributionChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@unique([subscriberId, channelId])
+  @@index([subscriberId])
+  @@index([sourceId])
+  @@index([channelId])
+  @@index([country])
+}
+
+model NewsletterSend {
+  id           String     @id @default(cuid())
+  contentId    String
+  subscriberId String
+  channelId    String
+  status       SendStatus @default(sent)
+  openedAt     DateTime?
+  clickedAt    DateTime?
+  ipAddress    String?
+  city         String?
+  country      String?
+  userAgent    String?
+  createdAt    DateTime   @default(now())
+
+  content    Content    @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  subscriber Subscriber @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
+
+  @@index([contentId])
+  @@index([subscriberId])
+  @@index([channelId])
+  @@index([status])
+}
+
+enum SendStatus {
+  sent
+  delivered
+  opened
+  clicked
+  bounced
 }
 
 model ContentTemplate {
@@ -418,6 +550,27 @@ model ContentTemplate {
   @@index([type])
 }
 
+model NewsletterTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String   @default("")
+  subject     String   @default("")
+  preheader   String   @default("")
+  thumbnail   String   @default("")
+  category    String   @default("general")
+  isPremium   Boolean  @default(false)
+  usageCount  Int      @default(0)
+  tenantId    String?
+  body        String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([category])
+}
+
 model ContentEvent {
   id        String   @id @default(cuid())
   contentId String
@@ -431,4 +584,20 @@ model ContentEvent {
   @@index([contentId])
   @@index([eventType])
   @@index([createdAt])
+}
+
+model WidgetToken {
+  id        String    @id @default(cuid())
+  token     String    @unique @default(cuid())
+  channelId String
+  tenantId  String
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+
+  channel DistributionChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  tenant  Workspace           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([channelId])
+  @@index([tenantId])
 }

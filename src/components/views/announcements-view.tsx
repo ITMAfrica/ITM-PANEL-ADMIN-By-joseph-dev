@@ -17,7 +17,6 @@ import {
   ViewSearchInput,
   BrandPrimaryButton,
 } from '@/components/view-layout';
-import { ResourceAnalyticsPanel } from '@/components/resource-analytics';
 import {
   ViewDataTable,
   ViewDataTableHeader,
@@ -107,8 +106,6 @@ export function AnnouncementsView() {
     <ViewShell>
       <ViewSubNav tabs={navTabs} activeTab={activeStatus} onTabChange={setActiveStatus} />
       <ViewTabPanel>
-        <ResourceAnalyticsPanel resourceId="announcements" />
-
         <ViewToolbar
           actions={
             <BrandPrimaryButton onClick={() => openPublicationComposer({ type: 'announcement' })}>
@@ -141,7 +138,11 @@ export function AnnouncementsView() {
           </ViewDataTableHeader>
           <ViewDataTableBody>
             {filteredAnnouncements.length === 0 ? (
-              <ViewDataTableEmpty colSpan={6} message={t.announcements.noResults} />
+              <ViewDataTableEmpty
+                colSpan={6}
+                message={t.announcements.noResults}
+                illustrationId="flash-news"
+              />
             ) : (
               filteredAnnouncements.map((announcement) => {
                 const statusColor = contentStatusColors[announcement.status];

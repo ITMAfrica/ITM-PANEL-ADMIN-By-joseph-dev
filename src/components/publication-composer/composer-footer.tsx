@@ -2,12 +2,14 @@
 
 import { format } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
-import { ChevronDown } from 'lucide-react';
+import { CalendarClock, ChevronDown, FileText, Rocket } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -22,6 +24,7 @@ interface ComposerFooterProps {
   onScheduledAtChange: (date: Date) => void;
   onCancel: () => void;
   onSchedule: (mode: 'now' | 'scheduled' | 'draft') => void;
+  isSubmitting?: boolean;
 }
 
 export function ComposerFooter({
@@ -31,6 +34,7 @@ export function ComposerFooter({
   onScheduledAtChange,
   onCancel,
   onSchedule,
+  isSubmitting = false,
 }: ComposerFooterProps) {
   const { t, locale } = useTranslation();
   const pc = t.publicationComposer;
@@ -47,6 +51,7 @@ export function ComposerFooter({
       <Button
         variant="outline"
         onClick={onCancel}
+        disabled={isSubmitting}
         className="h-10 border-[#E8ECEF] bg-white px-5 text-sm font-medium text-[#1D141F]"
       >
         {pc.cancel}
@@ -102,24 +107,58 @@ export function ComposerFooter({
         <div className="flex overflow-hidden rounded-lg shadow-sm">
           <Button
             onClick={() => onSchedule('scheduled')}
-            className="h-10 rounded-none rounded-l-lg px-5 text-sm font-semibold hover:opacity-90"
+            disabled={isSubmitting}
+            className="h-10 rounded-none rounded-l-lg px-5 text-sm font-semibold hover:opacity-90 disabled:opacity-70"
             style={{ backgroundColor: BRAND_DARK, color: BRAND_YELLOW }}
           >
-            {pc.schedule}
+            {isSubmitting ? pc.submitting : pc.schedule}
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
-                className="h-10 rounded-none rounded-r-lg border-l border-[#E2F343]/30 px-2 hover:opacity-90"
+                disabled={isSubmitting}
+                className="h-10 rounded-none rounded-r-lg border-l border-[#E2F343]/30 px-2 hover:opacity-90 disabled:opacity-70"
                 style={{ backgroundColor: BRAND_DARK, color: BRAND_YELLOW }}
               >
                 <ChevronDown className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onSchedule('scheduled')}>{pc.scheduleLater}</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onSchedule('now')}>{pc.publishNow}</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onSchedule('draft')}>{pc.saveDraft}</DropdownMenuItem>
+            <DropdownMenuContent
+              align="end"
+              sideOffset={8}
+              className="w-56 rounded-xl border-[#E8ECEF] p-1.5 shadow-lg shadow-black/5"
+            >
+              <DropdownMenuLabel className="px-2 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wider text-[#8B939E]">
+                {pc.actions}
+              </DropdownMenuLabel>
+              <DropdownMenuItem
+                onClick={() => onSchedule('scheduled')}
+                className="gap-3 rounded-lg px-2 py-2.5 text-sm font-medium text-[#1D141F] hover:bg-[#F8FAFB]"
+              >
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#E2F343]/40 bg-[#E2F343]/20 text-[#1D141F]">
+                  <CalendarClock className="h-4 w-4" />
+                </span>
+                {pc.scheduleLater}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => onSchedule('now')}
+                className="gap-3 rounded-lg px-2 py-2.5 text-sm font-medium text-[#1D141F] hover:bg-[#F8FAFB]"
+              >
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#1D141F] text-[#E2F343]">
+                  <Rocket className="h-4 w-4" />
+                </span>
+                {pc.publishNow}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="my-1.5 bg-[#E8ECEF]" />
+              <DropdownMenuItem
+                onClick={() => onSchedule('draft')}
+                className="gap-3 rounded-lg px-2 py-2.5 text-sm font-medium text-[#5C6470] hover:bg-[#F8FAFB]"
+              >
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#E8ECEF] bg-[#F5F7F9] text-[#5C6470]">
+                  <FileText className="h-4 w-4" />
+                </span>
+                {pc.saveDraft}
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

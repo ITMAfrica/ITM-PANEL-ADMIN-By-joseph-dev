@@ -19,10 +19,12 @@ Ce projet utilise **Docker Compose** pour Postgres et l'API. Ne jamais recommand
 | Prisma push | `bash scripts/db.sh push` |
 | Prisma migrate | `bash scripts/db.sh migrate` |
 | Reset base | `bash scripts/db.sh reset` |
+| Tests API (smoke) | `bash scripts/test.sh` |
 | Prisma direct (si besoin) | `docker compose exec api npx prisma <cmd>` |
 
 ## Règles
 
 - Prisma s'exécute **dans le conteneur `api`**, pas sur l'hôte.
 - Le frontend Next.js tourne sur l'hôte (`npx next dev -p 3002`), lancé par `scripts/dev.sh`.
+- Les images Docker utilisent **npm ci** + `package-lock.json` (pas Bun).
 - Ne pas suggérer `npm run db:*`, `npm run dev:server` ni `prisma` en local hors Docker.

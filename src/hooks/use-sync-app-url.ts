@@ -3,14 +3,29 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAppStore } from '@/lib/store';
-import { pageIdToPath, pathToPageId } from '@/lib/app-routes';
+import { safeReplace } from '@/lib/safe-navigate';
+import {
+  pageIdToPath,
+  pathToPageId,
+  resolveLegacyCommunicationPath,
+} from '@/lib/app-routes';
+
+function pathOnly(pathOrUrl: string): string {
+  return pathOrUrl.split('?')[0] || '/';
+}
+
+function currentFullPath(pathname: string): string {
+  return (
+    pathname + (typeof window !== 'undefined' ? window.location.search : '')
+  );
+}
 
 /**
  * Keeps Zustand `activePage` and the browser URL in sync (bidirectional).
  * Mount once in MainApp — all existing setActivePage() calls update the URL automatically.
  *
- * URL → state runs only when `pathname` changes (back/forward, direct link).
- * State → URL runs when `activePage` changes from app code.
+ * On refresh / direct link: URL must win first (activePage defaults to dashboard and is not persisted).
+ * State → URL must not strip page-owned query params (e.g. editorial-calendar tabs).
  */
 export function useSyncAppUrl() {
   const pathname = usePathname();
@@ -19,9 +34,9 @@ export function useSyncAppUrl() {
   const setActivePage = useAppStore((s) => s.setActivePage);
   const skipUrlPush = useRef(false);
   const skipStatePull = useRef(false);
-  const lastPathname = useRef(pathname);
+  const lastPathname = useRef<string | null>(null);
 
-  // Browser navigation / direct URL → Zustand
+  // Browser navigation / direct URL / refresh → Zustand
   useLayoutEffect(() => {
     if (skipStatePull.current) {
       skipStatePull.current = false;
@@ -29,6 +44,7 @@ export function useSyncAppUrl() {
       return;
     }
 
+    // Skip only on same-path re-runs after init — never skip first mount (refresh).
     if (lastPathname.current === pathname) {
       return;
     }
@@ -37,12 +53,23 @@ export function useSyncAppUrl() {
     const pageFromUrl = pathToPageId(pathname);
     if (!pageFromUrl) return;
 
+    const legacyRedirect = resolveLegacyCommunicationPath(pageFromUrl);
+    if (legacyRedirect) {
+      skipUrlPush.current = true;
+      setActivePage('editorial-calendar');
+      if (currentFullPath(pathname) !== legacyRedirect) {
+        skipStatePull.current = true;
+        safeReplace(router, legacyRedirect, { scroll: false });
+      }
+      return;
+    }
+
     const currentPage = useAppStore.getState().activePage;
     if (pageFromUrl === currentPage) return;
 
     skipUrlPush.current = true;
     setActivePage(pageFromUrl);
-  }, [pathname, setActivePage]);
+  }, [pathname, setActivePage, router]);
 
   // Zustand navigation → URL
   useEffect(() => {
@@ -51,10 +78,33 @@ export function useSyncAppUrl() {
       return;
     }
 
+    // Until URL→state has initialized from the real pathname, do not push dashboard default.
+    if (lastPathname.current === null) {
+      return;
+    }
+
+    const legacyRedirect = resolveLegacyCommunicationPath(activePage);
+    if (legacyRedirect) {
+      if (useAppStore.getState().activePage !== 'editorial-calendar') {
+        skipUrlPush.current = true;
+        setActivePage('editorial-calendar');
+      }
+      if (currentFullPath(pathname) !== legacyRedirect) {
+        skipStatePull.current = true;
+        safeReplace(router, legacyRedirect, { scroll: false });
+      }
+      return;
+    }
+
     const targetPath = pageIdToPath(activePage);
-    if (pathname === targetPath) return;
+    const targetPathname = pathOnly(targetPath);
+
+    // Already on the right page — keep search params (calendar tabs, filters, etc.).
+    if (pathname === targetPathname) {
+      return;
+    }
 
     skipStatePull.current = true;
-    router.replace(targetPath, { scroll: false });
-  }, [activePage, pathname, router]);
+    safeReplace(router, targetPath, { scroll: false });
+  }, [activePage, pathname, router, setActivePage]);
 }

@@ -7,10 +7,6 @@ import { DashboardView } from '@/components/views/dashboard-view';
 import { AutomationsView } from '@/components/views/automations-view';
 import { ReportsView } from '@/components/views/reports-view';
 import { SettingsView } from '@/components/views/settings-view';
-import { NewslettersView } from '@/components/views/newsletters-view';
-import { ArticlesView } from '@/components/views/articles-view';
-import { AnnouncementsView } from '@/components/views/announcements-view';
-import { CampaignsView } from '@/components/views/campaigns-view';
 import { EditorialCalendarView } from '@/components/views/editorial-calendar-view';
 import { LibraryView } from '@/components/views/library-view';
 import { MediaView } from '@/components/views/media-view';
@@ -18,12 +14,12 @@ import { TemplatesView } from '@/components/views/templates-view';
 import { DraftsView } from '@/components/views/drafts-view';
 import { PublishedView } from '@/components/views/published-view';
 import { ArchiveView } from '@/components/views/archive-view';
-import { SchedulingView } from '@/components/views/scheduling-view';
-import { ChannelsView } from '@/components/views/channels-view';
-import { StatisticsView } from '@/components/views/statistics-view';
 import { UsersView } from '@/components/views/users-view';
 import { RolesView } from '@/components/views/roles-view';
 import { TenantsView } from '@/components/views/tenants-view';
+import { WorkspaceMembersView } from '@/components/views/workspace-members-view';
+import { DocumentationView } from '@/components/views/documentation-view';
+import { ConversationView } from '@/components/views/conversation-view';
 import { AuditView } from '@/components/views/audit-view';
 import { TopBar } from '@/components/top-bar';
 import { NotificationPanel } from '@/components/notification-panel';
@@ -40,29 +36,31 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowUp, Plus, FileText, Target, Clock } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { PageTransition } from '@/components/page-transition';
+import { shouldShowAppSidebar } from '@/lib/navigation';
+import type { OpenPublicationComposerOptions } from '@/lib/publication-composer';
+
+import { LEGACY_COMMUNICATION_REDIRECTS } from '@/lib/app-routes';
+
+const LEGACY_HUB_PAGE_SET = new Set<string>(Object.keys(LEGACY_COMMUNICATION_REDIRECTS));
 
 const viewMap: Record<string, React.ComponentType> = {
   dashboard: DashboardView,
-  newsletters: NewslettersView,
-  articles: ArticlesView,
-  announcements: AnnouncementsView,
-  campaigns: CampaignsView,
   'editorial-calendar': EditorialCalendarView,
+  conversation: ConversationView,
   library: LibraryView,
   media: MediaView,
   templates: TemplatesView,
   drafts: DraftsView,
   published: PublishedView,
   archive: ArchiveView,
-  scheduling: SchedulingView,
-  channels: ChannelsView,
   automations: AutomationsView,
-  statistics: StatisticsView,
   reports: ReportsView,
   users: UsersView,
   roles: RolesView,
   tenants: TenantsView,
+  'workspace-members': WorkspaceMembersView,
   audit: AuditView,
+  documentation: DocumentationView,
   settings: SettingsView,
 };
 
@@ -110,6 +108,12 @@ function BackToTopButton() {
   );
 }
 
+function openCalendarComposer(opts?: OpenPublicationComposerOptions) {
+  const store = useAppStore.getState();
+  store.setActivePage('editorial-calendar');
+  store.openPublicationComposer(opts);
+}
+
 function MobileFAB() {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -127,7 +131,7 @@ function MobileFAB() {
           >
             <button
               onClick={() => {
-                useAppStore.getState().openPublicationComposer();
+                openCalendarComposer();
                 setOpen(false);
               }}
               className="flex items-center gap-2 px-3 py-2 rounded-full bg-background shadow-lg border text-xs font-medium hover:bg-muted transition-colors"
@@ -137,7 +141,7 @@ function MobileFAB() {
             </button>
             <button
               onClick={() => {
-                useAppStore.getState().setActivePage('campaigns');
+                openCalendarComposer({ type: 'article' });
                 setOpen(false);
               }}
               className="flex items-center gap-2 px-3 py-2 rounded-full bg-background shadow-lg border text-xs font-medium hover:bg-muted transition-colors"
@@ -147,7 +151,7 @@ function MobileFAB() {
             </button>
             <button
               onClick={() => {
-                useAppStore.getState().openPublicationComposer();
+                openCalendarComposer({ type: 'article', scheduledAt: new Date() });
                 setOpen(false);
               }}
               className="flex items-center gap-2 px-3 py-2 rounded-full bg-background shadow-lg border text-xs font-medium hover:bg-muted transition-colors"
@@ -175,12 +179,10 @@ function MobileFAB() {
   );
 }
 
-const HOME_PAGE_ID = 'dashboard';
 
 function LazyOverlays() {
   const notificationPanelOpen = useAppStore((s) => s.notificationPanelOpen);
   const contentDetailOpen = useAppStore((s) => s.contentDetailOpen);
-  const composerOpen = useAppStore((s) => s.publicationComposer.open);
   const shortcutsHelpOpen = useAppStore((s) => s.shortcutsHelpOpen);
   const keyboardShortcutsOpen = useAppStore((s) => s.keyboardShortcutsOpen);
   const createWorkspaceDialogOpen = useAppStore((s) => s.createWorkspaceDialogOpen);
@@ -189,7 +191,8 @@ function LazyOverlays() {
     <>
       {notificationPanelOpen && <NotificationPanel />}
       {contentDetailOpen && <ContentDetailDrawer />}
-      {composerOpen && <CreatePublicationComposerOverlay />}
+      {/* Always mounted so Radix Dialog can release body pointer-events on close */}
+      <CreatePublicationComposerOverlay />
       {createWorkspaceDialogOpen && <CreateWorkspaceDialog />}
       {shortcutsHelpOpen && <ShortcutsDialog />}
       {keyboardShortcutsOpen && <KeyboardShortcutsDialog />}
@@ -200,7 +203,7 @@ function LazyOverlays() {
 export function MainApp() {
   const activePage = useAppStore((s) => s.activePage);
   const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
-  const isHomePage = activePage === HOME_PAGE_ID;
+  const showSidebar = shouldShowAppSidebar(activePage);
 
   useKeyboardShortcuts();
   useSyncAppUrl();
@@ -216,12 +219,15 @@ export function MainApp() {
   }, []);
 
   useEffect(() => {
-    if (!isHomePage) {
+    if (!showSidebar) {
       useAppStore.getState().setMobileSidebarOpen(false);
     }
-  }, [isHomePage]);
+  }, [showSidebar]);
 
-  const ActiveView = viewMap[activePage] || DashboardView;
+  const ActiveView =
+    activePage === 'editorial-calendar' || LEGACY_HUB_PAGE_SET.has(activePage)
+      ? EditorialCalendarView
+      : viewMap[activePage] || DashboardView;
 
   return (
     <div className="min-h-screen bg-content-bg">
@@ -229,18 +235,20 @@ export function MainApp() {
       <TopBar />
 
       {/* Body: sidebar (home only) + scrollable content below top bar */}
-      <div className="flex pt-18 min-h-screen">
-        {isHomePage && <AppSidebar />}
+      <div className="flex pt-18 min-h-screen overflow-x-hidden">
+        {showSidebar && <AppSidebar />}
 
         <div
           className={cn(
-            'flex-1 flex flex-col min-h-[calc(100vh-4.5rem)] transition-all duration-300',
-            isHomePage && (sidebarCollapsed ? 'lg:ml-[68px]' : 'lg:ml-[260px]')
+            'flex flex-col min-h-[calc(100vh-4.5rem)] w-full transition-all duration-300',
+            showSidebar && (sidebarCollapsed
+              ? 'lg:w-[calc(100vw-68px)] lg:ml-[68px]'
+              : 'lg:w-[calc(100vw-260px)] lg:ml-[260px]')
           )}
         >
           <main
             id="main-content-area"
-            className="flex-1 p-4 md:p-6 overflow-auto relative metricool-content-bg"
+            className="flex-1 p-4 md:p-6 overflow-y-auto overflow-x-hidden relative metricool-content-bg"
           >
             <div className="relative z-10">
               <PageTransition pageId={activePage}>

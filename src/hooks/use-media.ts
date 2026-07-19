@@ -13,5 +13,7 @@ export function useMedia(tenantId: string) {
       return res.json();
     },
     enabled: !!tenantId,
+    staleTime: 1000 * 60 * 60 * 24,
+    refetchOnWindowFocus: true,
   });
 }

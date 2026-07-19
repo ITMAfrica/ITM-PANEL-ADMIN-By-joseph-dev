@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 CMD="${1:-}"
+shift 2>/dev/null || true
 
 ensure_docker() {
   if ! command -v docker >/dev/null 2>&1; then
@@ -33,24 +34,41 @@ prisma() {
   docker compose exec -T api npx prisma "$@"
 }
 
+restart_api() {
+  echo "🔄 Redémarrage du conteneur API pour charger le nouveau client Prisma..."
+  docker compose restart api
+  until docker compose ps api --status running -q 2>/dev/null | grep -q .; do
+    sleep 1
+  done
+  echo "✅ API redémarrée."
+}
+
 case "$CMD" in
   generate)
     prisma generate
+    restart_api
     ;;
   push)
     prisma db push
+    restart_api
     ;;
   migrate)
-    prisma migrate dev
+    prisma migrate dev "$@"
+    restart_api
     ;;
   reset)
     prisma migrate reset
+    restart_api
     ;;
   migrate:deploy)
     prisma migrate deploy
+    restart_api
+    ;;
+  seed)
+    prisma db seed
     ;;
   *)
-    echo "Usage: bash scripts/db.sh {generate|push|migrate|reset|migrate:deploy}"
+    echo "Usage: bash scripts/db.sh {generate|push|migrate|reset|migrate:deploy|seed}"
     exit 1
     ;;
 esac

@@ -27,7 +27,7 @@ import {
   ViewFilterRow,
   FilterChip,
 } from '@/components/view-layout';
-import { ResourceAnalyticsPanel } from '@/components/resource-analytics';
+import { UpgradePlanBanner } from '@/components/upgrade-plan-banner';
 import {
   ViewDataTable,
   ViewDataTableHeader,
@@ -152,14 +152,13 @@ export function LibraryView() {
 
   return (
     <ViewShell>
+      <UpgradePlanBanner variant="library" />
       <ViewSubNav
         tabs={typeTabs}
         activeTab={typeFilter as ContentTypeTab}
         onTabChange={setTypeFilter}
       />
       <ViewTabPanel>
-        <ResourceAnalyticsPanel resourceId="published-content" />
-
         <ViewToolbar
           actions={
             <BrandPrimaryButton className="gap-1.5">
@@ -285,7 +284,11 @@ export function LibraryView() {
           </ViewDataTableHeader>
           <ViewDataTableBody>
             {filtered.length === 0 ? (
-              <ViewDataTableEmpty colSpan={7} message={t.library.noResults} />
+              <ViewDataTableEmpty
+                colSpan={7}
+                message={t.library.noResults}
+                illustrationId="library"
+              />
             ) : (
               filtered.map((content) => {
                 const statusColor = contentStatusColors[content.status] || contentStatusColors.draft;

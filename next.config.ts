@@ -17,6 +17,9 @@ function getLanDevOrigins(): string[] {
   return [...origins];
 }
 
+const DEFAULT_API_URL =
+  process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
+
 const nextConfig: NextConfig = {
   output: "standalone",
   allowedDevOrigins: getLanDevOrigins(),
@@ -28,6 +31,19 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: false,
   },
   reactStrictMode: true,
+  // Proxy all /api requests to the Express backend. This keeps cookies
+  // first-party (same origin as the Next.js page), which eliminates the
+  // cross-hostname cookie issues that caused the connect/disconnect loop.
+  // In production behind Caddy this rewrite is bypassed because Caddy routes
+  // /api/* to the backend directly, so it remains harmless.
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${DEFAULT_API_URL}/:path*`,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

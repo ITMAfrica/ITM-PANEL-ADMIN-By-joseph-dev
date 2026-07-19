@@ -22,6 +22,13 @@ jobs:
 
       - run: npm run lint
 
+      - run: npm run test
+        env:
+          AUTH_SECRET: ci-test-secret-minimum-32-characters-long
+          PUBLIC_API_KEY: ci-api-key
+          ALLOW_PUBLIC_REGISTER: 'false'
+          NODE_ENV: test
+
       - run: npx tsc -p server/tsconfig.json --noEmit
 
       - run: npm run build

@@ -1,46 +1,51 @@
-import type { Announcement, Article, Campaign, ContentItem, Newsletter } from '@/lib/types';
+import type { Announcement, Article, Campaign, Newsletter } from '@/lib/types';
 
-export type ResourceKpis = {
+// ─── Per-type KPI types ──────────────────────────────────────────────────
+
+export type NewsletterKpis = {
+  type: 'newsletter';
   openRate: number | null;
   clickRate: number | null;
-  conversionRate: number | null;
-  engagement: number | null;
+  bounceRate: number | null;
+  recipientCount: number;
 };
 
-export type AnalyticsResource = {
-  id: string;
-  title: string;
-  kpis: ResourceKpis;
-  publishedCount: number;
-  source: 'internal' | 'external';
+export type ArticleKpis = {
+  type: 'article';
+  totalViews: number;
+  avgReadingTime: number | null;
+  interactionRate: number | null;
+  clickRate: number | null;
 };
+
+export type AnnouncementKpis = {
+  type: 'announcement';
+  acknowledgmentRate: number | null;
+  totalRecipients: number;
+  acknowledgedCount: number;
+  clickRate: number | null;
+};
+
+export type CampaignKpis = {
+  type: 'campaign';
+  activeCount: number;
+  completedCount: number;
+  totalReach: number;
+  avgOpenRate: number | null;
+  avgClickRate: number | null;
+};
+
+export type AnyResourceKpis =
+  | NewsletterKpis
+  | ArticleKpis
+  | AnnouncementKpis
+  | CampaignKpis;
+
+// ─── Helpers ─────────────────────────────────────────────────────────────
 
 function average(values: number[]): number | null {
   if (values.length === 0) return null;
   return Math.round((values.reduce((sum, value) => sum + value, 0) / values.length) * 10) / 10;
-}
-
-function computeEngagement(openRate: number | null, clickRate: number | null): number | null {
-  if (openRate === null && clickRate === null) return null;
-  const open = openRate ?? 0;
-  const click = clickRate ?? 0;
-  return Math.round((open * 0.4 + click * 0.6) * 10) / 10;
-}
-
-function computeConversion(openRate: number | null, clickRate: number | null): number | null {
-  if (!openRate || openRate <= 0 || clickRate === null) return null;
-  return Math.round((clickRate / openRate) * 100 * 10) / 10;
-}
-
-function finalizeKpis(openRates: number[], clickRates: number[]): ResourceKpis {
-  const openRate = average(openRates);
-  const clickRate = average(clickRates);
-  return {
-    openRate,
-    clickRate,
-    conversionRate: computeConversion(openRate, clickRate),
-    engagement: computeEngagement(openRate, clickRate),
-  };
 }
 
 export function formatKpiPercent(value: number | null): string {
@@ -48,96 +53,129 @@ export function formatKpiPercent(value: number | null): string {
   return `${value}%`;
 }
 
-export function computeNewsletterKpis(newsletters: Newsletter[]): ResourceKpis {
+// ─── Compute functions ───────────────────────────────────────────────────
+
+export function computeNewsletterKpis(newsletters: Newsletter[]): NewsletterKpis {
   const published = newsletters.filter((item) => item.status === 'published');
   const openRates = published.filter((item) => item.openRate > 0).map((item) => item.openRate);
   const clickRates = published.filter((item) => item.clickRate > 0).map((item) => item.clickRate);
-  return finalizeKpis(openRates, clickRates);
+  const bounceRates = published.filter((item) => item.bounceRate > 0).map((item) => item.bounceRate);
+  const totalRecipients = published.reduce((sum, item) => sum + item.recipientCount, 0);
+
+  return {
+    type: 'newsletter',
+    openRate: average(openRates),
+    clickRate: average(clickRates),
+    bounceRate: average(bounceRates),
+    recipientCount: totalRecipients,
+  };
 }
 
-export function computeArticleKpis(articles: Article[]): ResourceKpis {
+export function computeArticleKpis(articles: Article[]): ArticleKpis {
   const published = articles.filter((item) => item.status === 'published');
+  const totalViews = published.reduce((sum, item) => sum + item.viewCount, 0);
   const clickRates = published
     .filter((item) => (item.clickRate ?? 0) > 0)
     .map((item) => item.clickRate!);
-  const openRates = published
+  const interactionRates = published
     .filter((item) => item.viewCount > 0)
     .map((item) => {
       const interactions = item.likeCount + item.commentCount + item.shareCount;
       return Math.min(100, Math.round((interactions / item.viewCount) * 100 * 10) / 10);
     })
     .filter((rate) => rate > 0);
+  const readingTimes = published.filter((item) => item.readingTime > 0).map((item) => item.readingTime);
 
-  return finalizeKpis(openRates, clickRates);
+  return {
+    type: 'article',
+    totalViews,
+    avgReadingTime: average(readingTimes),
+    interactionRate: average(interactionRates),
+    clickRate: average(clickRates),
+  };
 }
 
-export function computeAnnouncementKpis(announcements: Announcement[]): ResourceKpis {
+export function computeAnnouncementKpis(announcements: Announcement[]): AnnouncementKpis {
   const published = announcements.filter((item) => item.status === 'published');
-  const openRates = published
+  const acknowledgmentRates = published
     .filter((item) => item.totalRecipients > 0)
     .map((item) => Math.round((item.acknowledgedCount / item.totalRecipients) * 1000) / 10);
   const clickRates = published
     .filter((item) => (item.clickRate ?? 0) > 0)
     .map((item) => item.clickRate!);
+  const totalRecipients = published.reduce((sum, item) => sum + item.totalRecipients, 0);
+  const acknowledgedCount = published.reduce((sum, item) => sum + item.acknowledgedCount, 0);
 
-  return finalizeKpis(openRates, clickRates);
+  return {
+    type: 'announcement',
+    acknowledgmentRate: average(acknowledgmentRates),
+    totalRecipients,
+    acknowledgedCount,
+    clickRate: average(clickRates),
+  };
 }
 
-export function computeCampaignKpis(campaigns: Campaign[]): ResourceKpis {
-  const tracked = campaigns.filter(
-    (item) => item.status === 'active' || item.status === 'completed'
-  );
+export function computeCampaignKpis(campaigns: Campaign[]): CampaignKpis {
+  const active = campaigns.filter((item) => item.status === 'active');
+  const completed = campaigns.filter((item) => item.status === 'completed');
+  const tracked = [...active, ...completed];
   const openRates = tracked.filter((item) => item.avgOpenRate > 0).map((item) => item.avgOpenRate);
   const clickRates = tracked.filter((item) => item.avgClickRate > 0).map((item) => item.avgClickRate);
-  return finalizeKpis(openRates, clickRates);
+  const totalReach = tracked.reduce((sum, item) => sum + item.totalReach, 0);
+
+  return {
+    type: 'campaign',
+    activeCount: active.length,
+    completedCount: completed.length,
+    totalReach,
+    avgOpenRate: average(openRates),
+    avgClickRate: average(clickRates),
+  };
 }
 
-export function computePublishedContentKpis(items: ContentItem[]): ResourceKpis {
-  const published = items.filter((item) => item.status === 'published');
-  const openRates: number[] = [];
-  const clickRates: number[] = [];
+// ─── Trend ────────────────────────────────────────────────────────────────
 
-  for (const item of published) {
-    if (item.type === 'newsletter') {
-      const newsletter = item as Newsletter;
-      if (newsletter.openRate > 0) openRates.push(newsletter.openRate);
-      if (newsletter.clickRate > 0) clickRates.push(newsletter.clickRate);
-      continue;
-    }
+export type TrendItem = {
+  publishedAt?: string | null;
+  scheduledAt?: string | null;
+  status?: string;
+};
 
-    if (item.type === 'article') {
-      const article = item as Article;
-      if ((article.clickRate ?? 0) > 0) clickRates.push(article.clickRate!);
-      if (article.viewCount > 0) {
-        const interactions = article.likeCount + article.commentCount + article.shareCount;
-        const rate = Math.min(100, Math.round((interactions / article.viewCount) * 100 * 10) / 10);
-        if (rate > 0) openRates.push(rate);
-      }
-      continue;
-    }
-
-    if (item.type === 'announcement') {
-      const announcement = item as Announcement;
-      if (announcement.totalRecipients > 0) {
-        openRates.push(
-          Math.round((announcement.acknowledgedCount / announcement.totalRecipients) * 1000) / 10
-        );
-      }
-      if ((announcement.clickRate ?? 0) > 0) clickRates.push(announcement.clickRate!);
-    }
-  }
-
-  return finalizeKpis(openRates, clickRates);
+function startOfWeek(date: Date): Date {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return d;
 }
 
-export function generateResourceTrend(weeks: number, publishedCount: number) {
-  const scale = Math.max(1, publishedCount);
+function isInWeekRange(iso: string | null | undefined, weekStart: Date, weekEnd: Date): boolean {
+  if (!iso) return false;
+  const t = new Date(iso).getTime();
+  return t >= weekStart.getTime() && t < weekEnd.getTime();
+}
+
+/** Buckets real publishedAt / scheduledAt timestamps into the last N weeks. */
+export function generateResourceTrend(weeks: number, items: TrendItem[]) {
   const data: { name: string; published: number; scheduled: number }[] = [];
+  const thisWeekStart = startOfWeek(new Date());
 
   for (let i = weeks - 1; i >= 0; i--) {
+    const weekStart = new Date(thisWeekStart);
+    weekStart.setDate(thisWeekStart.getDate() - i * 7);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 7);
     const weekIndex = weeks - i;
-    const published = Math.max(1, Math.round((scale * weekIndex) / weeks));
-    const scheduled = Math.max(0, Math.round((scale * weekIndex) / (weeks + 2)));
+
+    const published = items.filter(
+      (item) =>
+        item.status === 'published' && isInWeekRange(item.publishedAt, weekStart, weekEnd)
+    ).length;
+    const scheduled = items.filter((item) =>
+      isInWeekRange(item.scheduledAt, weekStart, weekEnd)
+    ).length;
+
     data.push({
       name: `S${String(weekIndex).padStart(2, '0')}`,
       published,

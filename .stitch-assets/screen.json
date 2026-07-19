@@ -1,0 +1,8 @@
+npm warn exec The following package was not found and will be installed: @_davideast/stitch-mcp@0.9.0
+npm warn deprecated whatwg-encoding@3.1.1: Use @exodus/bytes instead for a more spec-conformant and faster implementation
+{"deviceType":"DESKTOP","height":"2048","htmlCode":{"downloadUrl":"https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJ7Eh1hcHBfY29tcGFuaW9uX2dlbmVyYXRlZF9maWxlcxpaCiVodG1sXzAwMDY1NWVlMjEzNTVhNGMwOTY4YWYxODU0MTQ0MjQ3EgoSBhDTo-_oMBgBkgEkCgpwcm9qZWN0X2lkEhZCFDE2MzUyNjMxMTQwMzYxMzAzNzk4&filename=&opi=89354086","mimeType":"text/html","name":"projects/16352631140361303798/files/17027870976767146103"},"name":"projects/16352631140361303798/screens/18bec45dd90648dda42d3da449a5cd57","screenshot":{"downloadUrl":"https://lh3.googleusercontent.com/aida/AP1WRLtIgOfq4RJkMI9Xv9fJYa8UfA4li0LJbacTTHRRKz8wlqrTwRdFnLoy8D42lRVKM16obyuU77BNIXre6L7EipdvYOTsu942Plq1s-Z5kfK_lidTlMXDtw2cnUjmkJCvMxYuVGvPnpDK2s6Y2O3Km-qvdaRhmX46MGpbHQvWLvyE2Pnb8ymSfeudgnZSlnnm0LOP8nkHdPL_rCAKCl8UOM1NGsW69Koms6SPrmSNXwBRU7gQgHMwSK7H2s0","name":"projects/16352631140361303798/files/ec891bd8683a49d18d93b2310b50b715"},"title":"Connexion Ultra Premium Animée - ITM PANEL ADMIN","width":"2560"}
+npm notice
+npm notice New major version of npm available! 10.9.8 -> 11.18.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.18.0
+npm notice To update run: npm install -g npm@11.18.0
+npm notice

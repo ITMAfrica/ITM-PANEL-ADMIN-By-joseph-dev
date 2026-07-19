@@ -1,13 +1,11 @@
 const DEFAULT_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
-const PRIVATE_HOST =
-  /^(localhost|127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3})$/;
-
 function getApiUrl(): string {
-  if (typeof window === 'undefined') return DEFAULT_API_URL;
-  const { protocol, hostname } = window.location;
-  if (PRIVATE_HOST.test(hostname)) {
-    return `${protocol}//${hostname}:3001/api`;
+  // In the browser, rely on the Next.js rewrite (dev) or the production proxy
+  // (Caddy) so the API stays on the same origin as the page. This keeps the
+  // session cookie first-party and fixes the cross-hostname disconnect loop.
+  if (typeof window !== 'undefined') {
+    return '/api';
   }
   return DEFAULT_API_URL;
 }

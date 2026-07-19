@@ -239,7 +239,11 @@ export function AuditView() {
           </ViewDataTableHeader>
           <ViewDataTableBody>
             {filteredLogs.length === 0 ? (
-              <ViewDataTableEmpty colSpan={6} message={t.audit.noResults} />
+              <ViewDataTableEmpty
+                colSpan={6}
+                message={t.audit.noResults}
+                illustrationId="empty-search"
+              />
             ) : (
               filteredLogs.map((log) => {
                 const userName = getUserName(log.userId);

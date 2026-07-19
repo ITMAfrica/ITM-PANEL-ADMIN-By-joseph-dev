@@ -173,7 +173,7 @@ export function RolesView() {
   const rolesWithCounts = useMemo(() => {
     const userCountsByRole: Record<string, number> = {};
     users.forEach((u) => {
-      userCountsByRole[u.role] = (userCountsByRole[u.role] || 0) + 1;
+      userCountsByRole[u.tenantRole] = (userCountsByRole[u.tenantRole] || 0) + 1;
     });
     return roleDefinitions.map((role) => ({
       ...role,
@@ -269,7 +269,11 @@ export function RolesView() {
           </ViewDataTableHeader>
           <ViewDataTableBody>
             {displayedRoles.length === 0 ? (
-              <ViewDataTableEmpty colSpan={5} message={t.roles.title} />
+              <ViewDataTableEmpty
+                colSpan={5}
+                message={t.roles.title}
+                illustrationId="roles"
+              />
             ) : (
               displayedRoles.map((role) => {
                 const roleColor = roleColors[role.key];

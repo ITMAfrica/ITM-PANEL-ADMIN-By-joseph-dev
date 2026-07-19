@@ -181,7 +181,11 @@ export function TenantsView() {
           </ViewDataTableHeader>
           <ViewDataTableBody>
             {filteredTenants.length === 0 ? (
-              <ViewDataTableEmpty colSpan={8} message={t.tenants.noResults} />
+              <ViewDataTableEmpty
+                colSpan={8}
+                message={t.tenants.noResults}
+                series2Id="orbit-workspace"
+              />
             ) : (
               filteredTenants.map((tenant) => {
                 const typeConfig = tenantTypeConfig[tenant.type];

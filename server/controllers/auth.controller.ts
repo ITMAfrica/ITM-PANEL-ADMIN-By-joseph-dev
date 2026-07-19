@@ -7,6 +7,9 @@ import {
   verifyPassword,
   type SessionUser,
 } from '../lib/auth';
+import { isPublicRegisterEnabled } from '../lib/register-policy';
+import { loginSchema, registerSchema } from '../lib/schemas';
+import { parseBody } from '../lib/validate';
 
 const userWithWorkspaceInclude = {
   workspaceMembers: {
@@ -17,6 +20,7 @@ const userWithWorkspaceInclude = {
 };
 
 async function sendAuthResponse(
+  req: Request,
   res: Response,
   user: {
     id: string;
@@ -38,7 +42,7 @@ async function sendAuthResponse(
     tenantName: membership?.workspace.name ?? '',
   };
 
-  await setSessionCookie(res, sessionUser);
+  await setSessionCookie(req, res, sessionUser);
 
   res.status(status).json({
     user: {
@@ -55,17 +59,15 @@ async function sendAuthResponse(
 
 export async function register(req: Request, res: Response) {
   try {
-    const { email, name, password } = req.body;
-    if (!email || !name || !password) {
-      res.status(400).json({ error: 'Name, email and password required' });
+    if (!isPublicRegisterEnabled()) {
+      res.status(403).json({ error: 'Registration is disabled' });
       return;
     }
 
-    if (password.length < 6) {
-      res.status(400).json({ error: 'Password must be at least 6 characters' });
-      return;
-    }
+    const body = parseBody(registerSchema, req, res);
+    if (!body) return;
 
+    const { email, name, password } = body;
     const normalizedEmail = email.toLowerCase().trim();
     const existing = await db.user.findUnique({ where: { email: normalizedEmail } });
     if (existing) {
@@ -83,34 +85,33 @@ export async function register(req: Request, res: Response) {
       include: userWithWorkspaceInclude,
     });
 
-    await sendAuthResponse(res, user, 201);
+    await sendAuthResponse(req, res, user, 201);
   } catch (error) {
-    console.error('Register error:', error);
+    console.error('[auth] Register error:', error);
     res.status(500).json({ error: 'Registration failed' });
   }
 }
 
 export async function login(req: Request, res: Response) {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      res.status(400).json({ error: 'Email and password required' });
-      return;
-    }
+    const body = parseBody(loginSchema, req, res);
+    if (!body) return;
 
+    const normalizedEmail = body.email.toLowerCase().trim();
     const user = await db.user.findUnique({
-      where: { email: email.toLowerCase().trim() },
+      where: { email: normalizedEmail },
       include: userWithWorkspaceInclude,
     });
 
-    if (!user || !(await verifyPassword(password, user.passwordHash))) {
+    if (!user || !(await verifyPassword(body.password, user.passwordHash))) {
       res.status(401).json({ error: 'Invalid credentials' });
       return;
     }
 
-    await sendAuthResponse(res, user);
+    await sendAuthResponse(req, res, user);
   } catch (error) {
-    console.error('Login error:', error);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[auth] Login error:', message, error instanceof Error ? error.stack : '');
     res.status(500).json({ error: 'Login failed' });
   }
 }

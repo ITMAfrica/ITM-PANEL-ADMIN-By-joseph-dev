@@ -23,12 +23,14 @@ import {
 import type { PageId } from '@/lib/types';
 import {
   ALL_NAV_ITEMS,
-  SECTION_NAV,
+  HEADER_SECTION_NAV,
   getSectionForPage,
   getSectionItems,
+  isDashboardSidebarPage,
   type SectionKey,
 } from '@/lib/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { DashboardConnectionsNav, DashboardToolsNav } from '@/components/dashboard-sidebar-nav';
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -156,6 +158,10 @@ export function AppSidebar() {
     setMobileSidebarOpen,
     notifications,
     favorites,
+    dashboardPlatform,
+    setDashboardPlatform,
+    dashboardTool,
+    setDashboardTool,
   } = useAppStore(
     useShallow((s) => ({
       activePage: s.activePage,
@@ -165,6 +171,10 @@ export function AppSidebar() {
       setMobileSidebarOpen: s.setMobileSidebarOpen,
       notifications: s.notifications,
       favorites: s.favorites,
+      dashboardPlatform: s.dashboardPlatform,
+      setDashboardPlatform: s.setDashboardPlatform,
+      dashboardTool: s.dashboardTool,
+      setDashboardTool: s.setDashboardTool,
     }))
   );
   const { t } = useTranslation();
@@ -224,7 +234,7 @@ export function AppSidebar() {
       {/* Mobile section switcher — header icons hidden below lg */}
       <div className="lg:hidden px-2 py-2 flex-shrink-0 border-b border-sidebar-border/60">
         <div className="flex gap-1 overflow-x-auto scrollbar-thin">
-          {SECTION_NAV.map(({ key, icon: Icon, defaultPage }) => {
+          {HEADER_SECTION_NAV.map(({ key, icon: Icon, defaultPage }) => {
             const isActive = activeSection === key;
             return (
               <button
@@ -273,30 +283,54 @@ export function AppSidebar() {
           </>
         )}
 
-        {activeSection && visibleSectionItems.length > 0 && (
-          <>
-            <SectionLabel collapsed={sidebarCollapsed}>
-              {getSectionLabel(activeSection)}
-            </SectionLabel>
-            <div className="space-y-0.5">
-              {visibleSectionItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <NavItem
-                    key={item.pageId}
-                    icon={<Icon className="h-4 w-4" />}
-                    label={getNavLabel(item.pageId)}
-                    pageId={item.pageId}
-                    active={activePage === item.pageId}
-                    collapsed={sidebarCollapsed}
-                    onClick={() => handleNavClick(item.pageId)}
-                  />
-                );
-              })}
-            </div>
-          </>
+        {isDashboardSidebarPage(activePage) ? (
+          <DashboardConnectionsNav
+            collapsed={sidebarCollapsed}
+            activePlatform={dashboardPlatform}
+            onPlatformChange={(platform) => {
+              setDashboardPlatform(platform);
+              if (activePage !== 'dashboard') handleNavClick('dashboard');
+            }}
+          />
+        ) : (
+          activeSection &&
+          visibleSectionItems.length > 0 && (
+            <>
+              <SectionLabel collapsed={sidebarCollapsed}>
+                {getSectionLabel(activeSection)}
+              </SectionLabel>
+              <div className="space-y-0.5">
+                {visibleSectionItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <NavItem
+                      key={item.pageId}
+                      icon={<Icon className="h-4 w-4" />}
+                      label={getNavLabel(item.pageId)}
+                      pageId={item.pageId}
+                      active={activePage === item.pageId}
+                      collapsed={sidebarCollapsed}
+                      onClick={() => handleNavClick(item.pageId)}
+                    />
+                  );
+                })}
+              </div>
+            </>
+          )
         )}
       </ScrollArea>
+
+      {isDashboardSidebarPage(activePage) && (
+        <>
+          <Separator className="bg-sidebar-border/60 flex-shrink-0" />
+          <DashboardToolsNav
+            collapsed={sidebarCollapsed}
+            activeTool={dashboardTool}
+            onToolChange={setDashboardTool}
+            onNavigate={handleNavClick}
+          />
+        </>
+      )}
 
       <Separator className="bg-sidebar-border/60" />
 
@@ -321,7 +355,7 @@ export function AppSidebar() {
         {/* Desktop sidebar — below fixed top bar */}
         <aside
           className={cn(
-            'hidden lg:flex flex-col fixed left-0 top-18 bottom-0 z-40 transition-all duration-300 border-r border-sidebar-border/80 bg-sidebar shadow-[1px_0_0_rgba(0,0,0,0.04)]',
+            'hidden lg:flex flex-col fixed left-0 top-18 bottom-0 z-40 transition-all duration-300 bg-sidebar',
             sidebarCollapsed ? 'w-[68px]' : 'w-[260px]'
           )}
         >

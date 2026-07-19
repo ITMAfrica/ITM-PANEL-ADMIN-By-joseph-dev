@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware';
 import { apiFetch } from './api-client';
+import { pathToPageId, resolveLegacyCommunicationPath } from './app-routes';
 import type { PageId, Tenant, Notification, UserRole } from './types';
 
 interface TimeEntry {
@@ -33,10 +34,23 @@ const AUTH_STORAGE_KEY = 'itm-panel-auth';
 
 let authPersistMode: 'local' | 'session' = 'session';
 
+// Monotonic id used by checkAuth() to discard stale results (race guard).
+let _lastCheckAuthId = 0;
+
 const authStorage: StateStorage = {
   getItem: (name) => {
     if (typeof window === 'undefined') return null;
-    return localStorage.getItem(name) ?? sessionStorage.getItem(name);
+    const local = localStorage.getItem(name);
+    if (local != null) {
+      // A session found in localStorage was persisted with "remember me".
+      // authPersistMode resets to 'session' on every page load; without this,
+      // the next persisted write would MOVE the session to sessionStorage and
+      // delete the localStorage copy — silently destroying the remembered
+      // session, so the user was logged out after closing the tab/browser.
+      authPersistMode = 'local';
+      return local;
+    }
+    return sessionStorage.getItem(name);
   },
   setItem: (name, value) => {
     const storage = authPersistMode === 'local' ? localStorage : sessionStorage;
@@ -49,6 +63,16 @@ const authStorage: StateStorage = {
     sessionStorage.removeItem(name);
   },
 };
+
+// Synchronous check used by AppEntry to know — before the first render —
+// whether a persisted session exists and must be validated server-side.
+export function hasPersistedAuthSession(): boolean {
+  if (typeof window === 'undefined') return false;
+  return (
+    localStorage.getItem(AUTH_STORAGE_KEY) != null ||
+    sessionStorage.getItem(AUTH_STORAGE_KEY) != null
+  );
+}
 
 interface AppState {
   // Navigation
@@ -69,6 +93,10 @@ interface AppState {
   setSidebarCollapsed: (collapsed: boolean) => void;
   mobileSidebarOpen: boolean;
   setMobileSidebarOpen: (open: boolean) => void;
+  dashboardPlatform: 'summary' | 'facebook' | 'instagram' | 'tiktok' | 'youtube' | 'linkedin';
+  setDashboardPlatform: (platform: AppState['dashboardPlatform']) => void;
+  dashboardTool: 'reports' | 'hashtag' | 'messageSettings' | 'documentation' | null;
+  setDashboardTool: (tool: AppState['dashboardTool']) => void;
 
   // Notifications
   notifications: Notification[];
@@ -143,11 +171,22 @@ interface AppState {
   setHasHydrated: (value: boolean) => void;
 }
 
+// Derives the initial page from the browser URL so MainApp never mounts on
+// the 'dashboard' default only to be corrected by useSyncAppUrl a beat later
+// (that correction was the visible "the page navigates by itself" jump after
+// every refresh). Legacy communication slugs map to their redirect target.
+function getInitialPage(): PageId {
+  if (typeof window === 'undefined') return 'dashboard';
+  const page = pathToPageId(window.location.pathname) ?? 'dashboard';
+  if (resolveLegacyCommunicationPath(page)) return 'editorial-calendar';
+  return page;
+}
+
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
   // Navigation
-  activePage: 'dashboard',
+  activePage: getInitialPage(),
   setActivePage: (page) => set({ activePage: page }),
 
   // Tenant (Multi-Tenant)
@@ -194,6 +233,10 @@ export const useAppStore = create<AppState>()(
   setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
   mobileSidebarOpen: false,
   setMobileSidebarOpen: (open) => set({ mobileSidebarOpen: open }),
+  dashboardPlatform: 'summary',
+  setDashboardPlatform: (platform) => set({ dashboardPlatform: platform, dashboardTool: null }),
+  dashboardTool: null,
+  setDashboardTool: (tool) => set({ dashboardTool: tool, dashboardPlatform: 'summary' }),
 
   // Notifications
   notifications: [],
@@ -233,15 +276,24 @@ export const useAppStore = create<AppState>()(
     open: false,
     type: DEFAULT_PUBLICATION_COMPOSER_TYPE,
     scheduledAt: undefined,
+    editContentId: undefined,
+    initialChannelIds: undefined,
   },
   openPublicationComposer: (opts) =>
     set({
       publicationComposer: {
         open: true,
-        type: opts?.type ?? (opts?.scheduledAt ? 'article' : DEFAULT_PUBLICATION_COMPOSER_TYPE),
+        type:
+          opts?.type ??
+          (opts?.scheduledAt ? 'article' : DEFAULT_PUBLICATION_COMPOSER_TYPE),
         scheduledAt:
           opts?.scheduledAt && isComposerScheduledAtValid(opts.scheduledAt)
             ? opts.scheduledAt.toISOString()
+            : undefined,
+        editContentId: opts?.editContentId,
+        initialChannelIds:
+          opts?.initialChannelIds && opts.initialChannelIds.length > 0
+            ? opts.initialChannelIds
             : undefined,
       },
     }),
@@ -251,6 +303,8 @@ export const useAppStore = create<AppState>()(
         ...s.publicationComposer,
         open: false,
         scheduledAt: undefined,
+        editContentId: undefined,
+        initialChannelIds: undefined,
       },
     })),
 
@@ -433,13 +487,26 @@ export const useAppStore = create<AppState>()(
     set({ isAuthenticated: false, currentUser: null });
   },
   checkAuth: async () => {
+    // Race-condition guard: only the most recent checkAuth call may apply its
+    // result. A stale 401 (e.g. fired before a fresh login set the session)
+    // must NOT overwrite a newer authenticated state — that was the root cause
+    // of the login/logout cycle.
+    const callId = ++_lastCheckAuthId;
     try {
       const res = await apiFetch('/auth/me');
+      if (callId !== _lastCheckAuthId) return;
       if (!res.ok) {
-        set({ isAuthenticated: false, currentUser: null });
+        // Only an explicit 401/403 means the session is invalid. Any other
+        // status (5xx, etc.) is a server problem — keep the local session
+        // instead of kicking the user back to the login screen.
+        if (res.status === 401 || res.status === 403) {
+          authStorage.removeItem(AUTH_STORAGE_KEY);
+          set({ isAuthenticated: false, currentUser: null });
+        }
         return;
       }
       const data = await res.json();
+      if (callId !== _lastCheckAuthId) return;
       if (data.user) {
         set({
           isAuthenticated: true,
@@ -457,7 +524,10 @@ export const useAppStore = create<AppState>()(
         await get().fetchWorkspaces();
       }
     } catch {
-      set({ isAuthenticated: false, currentUser: null });
+      // Network failure (API down/restarting, CORS, offline): NOT an auth
+      // signal. Keep the persisted session — the next successful /auth/me
+      // will re-validate it. Logging out here caused the connect/disconnect
+      // loop whenever the API was briefly unreachable during page load.
     }
   },
     }),

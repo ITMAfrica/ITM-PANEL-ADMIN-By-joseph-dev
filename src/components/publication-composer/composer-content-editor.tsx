@@ -93,7 +93,6 @@ interface ComposerContentEditorProps {
   charLimit?: number;
   counterIcon?: React.ReactNode;
   className?: string;
-  compact?: boolean;
 }
 
 export function ComposerContentEditor({
@@ -104,7 +103,6 @@ export function ComposerContentEditor({
   charLimit,
   counterIcon,
   className,
-  compact = false,
 }: ComposerContentEditorProps) {
   const { t } = useTranslation();
   const pc = t.publicationComposer;
@@ -216,10 +214,7 @@ export function ComposerContentEditor({
           onChange={(e) => handleTextChange(e.target.value)}
           placeholder={placeholder}
           className={cn(
-            'resize-none border-0 bg-transparent px-4 pb-16 pt-4 text-[15px] leading-relaxed shadow-none focus-visible:ring-0',
-            compact
-              ? 'min-h-[100px] sm:min-h-[120px]'
-              : 'min-h-[160px] sm:min-h-[200px] md:min-h-[240px] lg:min-h-0 lg:flex-1',
+            'min-h-[160px] resize-none border-0 bg-transparent px-4 pb-16 pt-4 text-[15px] leading-relaxed shadow-none focus-visible:ring-0 sm:min-h-[200px] md:min-h-[240px] lg:min-h-0 lg:flex-1',
             attachments.length > 0 && 'pb-4'
           )}
         />

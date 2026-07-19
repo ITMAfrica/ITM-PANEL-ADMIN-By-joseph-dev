@@ -2,7 +2,6 @@ import {
   Mail,
   FileText,
   Megaphone,
-  ScrollText,
   Share2,
   type LucideIcon,
 } from 'lucide-react';
@@ -14,6 +13,9 @@ export interface PublicationComposerState {
   open: boolean;
   type: PublicationComposerType;
   scheduledAt?: string;
+  editContentId?: string;
+  /** Pre-select distribution channels when opening (e.g. calendar channel filter). */
+  initialChannelIds?: string[];
 }
 
 export const DEFAULT_PUBLICATION_COMPOSER_TYPE: PublicationComposerType = 'social';
@@ -73,18 +75,6 @@ export const publicationTypes: PublicationTypeConfig[] = [
     gradientTo: 'to-rose-500/2',
   },
   {
-    type: 'communique',
-    icon: ScrollText,
-    labelKey: 'communique',
-    descKey: 'typeCommunique',
-    color: 'text-violet-600',
-    bgColor: 'bg-violet-500/8',
-    borderColor: 'border-violet-500/30',
-    indicatorBg: 'bg-violet-500',
-    gradientFrom: 'from-violet-500/15',
-    gradientTo: 'to-violet-500/2',
-  },
-  {
     type: 'social',
     icon: Share2,
     labelKey: 'social',
@@ -102,27 +92,13 @@ export function isCmsType(type: PublicationComposerType): boolean {
   return type !== 'social';
 }
 
-export function getPageForType(type: PublicationComposerType): PageId | null {
-  switch (type) {
-    case 'newsletter':
-      return 'newsletters';
-    case 'article':
-      return 'articles';
-    case 'announcement':
-      return 'announcements';
-    case 'communique':
-      return 'library';
-    case 'social':
-      return 'editorial-calendar';
-    default:
-      return null;
-  }
+export function getPageForType(_type: PublicationComposerType): PageId {
+  return 'editorial-calendar';
 }
 
 export interface PublicationComposerPayload {
   type: PublicationComposerType;
   title: string;
-  summary: string;
   body: string;
   authorId: string;
   tags: string[];
@@ -134,6 +110,9 @@ export interface PublicationComposerPayload {
 export interface OpenPublicationComposerOptions {
   type?: PublicationComposerType;
   scheduledAt?: Date;
+  editContentId?: string;
+  /** When set (e.g. from calendar filter), pre-check these channels in the form. */
+  initialChannelIds?: string[];
 }
 
 export function parseComposerScheduledAt(iso?: string): Date {
@@ -144,4 +123,66 @@ export function parseComposerScheduledAt(iso?: string): Date {
 
 export function isComposerScheduledAtValid(date: Date): boolean {
   return !Number.isNaN(date.getTime());
+}
+
+type CmsComposerType = Exclude<PublicationComposerType, 'social'>;
+
+export interface CmsFormSeed {
+  title: string;
+  body: string;
+  authorId: string;
+  tags: string[];
+  selectedChannels: string[];
+  emailSubject: string;
+  urgency: 'info' | 'warning' | 'critical';
+  category: string;
+}
+
+export function cmsFormSeedFromContent(
+  content: {
+    type: string;
+    title: string;
+    body?: string;
+    authorId?: string;
+    tags?: string[];
+    metadata?: Record<string, unknown>;
+    channelIds?: string[];
+    urgency?: string;
+    category?: string;
+  }
+): { type: CmsComposerType; form: CmsFormSeed } | null {
+  const type = content.type;
+  if (
+    type !== 'newsletter' &&
+    type !== 'article' &&
+    type !== 'announcement' &&
+    type !== 'communique'
+  ) {
+    return null;
+  }
+
+  const meta = content.metadata ?? {};
+  const urgencyRaw = content.urgency ?? meta.urgency;
+  const urgency =
+    urgencyRaw === 'warning' || urgencyRaw === 'critical' ? urgencyRaw : 'info';
+
+  return {
+    type,
+    form: {
+      title: content.title,
+      body: content.body ?? '',
+      authorId: content.authorId ?? '',
+      tags: content.tags ?? [],
+      selectedChannels:
+        content.channelIds ??
+        (Array.isArray(meta.channelIds) ? (meta.channelIds as string[]) : []),
+      emailSubject:
+        (typeof meta.emailSubject === 'string' ? meta.emailSubject : '') ||
+        (typeof meta.subject === 'string' ? meta.subject : ''),
+      urgency,
+      category:
+        content.category ??
+        (typeof meta.category === 'string' ? meta.category : ''),
+    },
+  };
 }

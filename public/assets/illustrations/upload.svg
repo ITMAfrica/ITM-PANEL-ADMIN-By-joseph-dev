@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 360" fill="none" role="img" aria-labelledby="t">
+  <title id="t">Import média</title>
+  <rect width="480" height="360" rx="28" fill="#FAFBFC"/>
+  <circle cx="420" cy="32" r="88" fill="#E2F343" fill-opacity="0.16"/>
+  <circle cx="48" cy="328" r="72" fill="#1D141F" fill-opacity="0.06"/>
+
+  <rect x="130" y="120" width="220" height="160" rx="18" stroke="#1D141F" stroke-width="6" stroke-dasharray="14 10" fill="#FAFBFC"/>
+  <path d="M240 240V160M240 160l-28 28M240 160l28 28" stroke="#E2F343" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="200" y="250" width="80" height="12" rx="6" fill="#E8ECEF"/>
+</svg>

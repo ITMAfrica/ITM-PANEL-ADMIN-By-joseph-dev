@@ -16,7 +16,6 @@ import {
   ViewSearchInput,
   BrandPrimaryButton,
 } from '@/components/view-layout';
-import { ResourceAnalyticsPanel } from '@/components/resource-analytics';
 import {
   ViewDataTable,
   ViewDataTableHeader,
@@ -95,8 +94,6 @@ export function NewslettersView() {
     <ViewShell>
       <ViewSubNav tabs={navTabs} activeTab={activeStatus} onTabChange={setActiveStatus} />
       <ViewTabPanel>
-        <ResourceAnalyticsPanel resourceId="newsletters" />
-
         <ViewToolbar
           actions={
             <BrandPrimaryButton onClick={() => openPublicationComposer({ type: 'newsletter' })}>
@@ -132,7 +129,11 @@ export function NewslettersView() {
           </ViewDataTableHeader>
           <ViewDataTableBody>
             {filteredNewsletters.length === 0 ? (
-              <ViewDataTableEmpty colSpan={7} message={t.newsletters.noResults} />
+              <ViewDataTableEmpty
+                colSpan={7}
+                message={t.newsletters.noResults}
+                series2Id="newsletter-assembly-line"
+              />
             ) : (
               filteredNewsletters.map((newsletter) => {
                 const statusColor = contentStatusColors[newsletter.status];

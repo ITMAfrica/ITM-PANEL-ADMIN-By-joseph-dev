@@ -16,8 +16,12 @@ import {
 } from '@/components/view-layout';
 import { useAppStore } from '@/lib/store';
 import { useTranslation } from '@/lib/i18n';
+import { getSectionItems } from '@/lib/navigation';
+import { ChevronRight } from 'lucide-react';
+import { SubscribeWidgetGenerator } from '@/components/subscribe-widget-generator';
+import { SiteConnectSection } from '@/components/site-connect-section';
 
-type SettingsTabId = 'compte' | 'acces';
+type SettingsTabId = 'compte' | 'acces' | 'integrations';
 
 const inputClassName =
   'h-10 rounded-lg border-border/80 bg-white shadow-none focus-visible:ring-1 focus-visible:ring-foreground/20';
@@ -52,10 +56,18 @@ function FieldGroup({ label, children }: { label: string; children: React.ReactN
 }
 
 export function SettingsView() {
-  const { locale, setLocale } = useTranslation();
+  const { locale, setLocale, t } = useTranslation();
   const { theme, setTheme } = useTheme();
+  const setActivePage = useAppStore((s) => s.setActivePage);
   const [activeTab, setActiveTab] = useState<SettingsTabId>('compte');
   const currentUser = useAppStore((s) => s.currentUser);
+
+  const adminItems = getSectionItems('administration');
+
+  const getNavLabel = (pageId: string): string => {
+    const key = pageId as keyof typeof t.nav;
+    return t.nav[key] || pageId;
+  };
 
   const [firstName, lastName] = useMemo(() => {
     const name = currentUser?.name || 'Joseph Nyandu';
@@ -66,6 +78,7 @@ export function SettingsView() {
   const tabs: ViewTab<SettingsTabId>[] = [
     { id: 'compte', label: 'Compte' },
     { id: 'acces', label: 'Accès' },
+    { id: 'integrations', label: locale === 'fr' ? 'Intégrations' : 'Integrations' },
   ];
 
   return (
@@ -189,6 +202,30 @@ export function SettingsView() {
                   </FieldGroup>
                 </div>
               </SettingsSection>
+
+              <SettingsSection title={t.topbar.sections.administration}>
+                <div className="divide-y divide-border/50 rounded-lg border border-border/50 bg-white overflow-hidden">
+                  {adminItems.map(({ pageId, icon: Icon }) => (
+                    <button
+                      key={pageId}
+                      type="button"
+                      onClick={() => setActivePage(pageId)}
+                      className="flex w-full items-center gap-3 px-4 py-3 text-sm text-foreground/90 transition-colors hover:bg-muted/40"
+                    >
+                      <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span className="flex-1 text-left">{getNavLabel(pageId)}</span>
+                      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/60" />
+                    </button>
+                  ))}
+                </div>
+              </SettingsSection>
+            </div>
+          )}
+
+          {activeTab === 'integrations' && (
+            <div className="space-y-8">
+              <SiteConnectSection />
+              <SubscribeWidgetGenerator />
             </div>
           )}
         </div>
