@@ -1,9 +1,30 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import {
+  Check,
+  ListFilter,
+  type LucideIcon,
+  BarChart3,
+  Radar,
+  Sparkles,
+  Zap,
+} from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useContent } from '@/hooks/use-content';
 import { useCampaigns } from '@/hooks/use-campaigns';
+import {
+  TREND_MODES,
+  useAnalyticsTrend,
+  type TrendMode,
+  type TrendResource,
+} from '@/hooks/use-analytics-trend';
 import { useAppStore } from '@/lib/store';
 import { useTranslation } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
@@ -13,17 +34,19 @@ import {
   computeArticleKpis,
   computeCampaignKpis,
   computeNewsletterKpis,
-  computePublishedContentKpis,
   formatKpiPercent,
   generateResourceTrend,
+  type AnnouncementKpis,
+  type ArticleKpis,
+  type CampaignKpis,
+  type NewsletterKpis,
 } from '@/lib/analytics-resources';
 import { tableColumnTints } from '@/components/view-data-table';
 import {
   Area,
   AreaChart,
-  CartesianGrid,
   ResponsiveContainer,
-  Tooltip,
+  Tooltip as ChartTooltip,
   XAxis,
   YAxis,
 } from 'recharts';
@@ -44,7 +67,7 @@ function useAnalyticsSourceData() {
     const announcements = allContent.filter((c) => c.type === 'announcement') as Announcement[];
     const publishedItems = [...newsletters, ...articles, ...announcements];
 
-    return { allContent, campaigns, newsletters, articles, announcements, publishedItems };
+    return { campaigns, newsletters, articles, announcements };
   }, [allContentData, campaignsData]);
 }
 
@@ -64,43 +87,83 @@ export const METRIC_TONES = {
 
 type MetricTone = keyof typeof METRIC_TONES;
 
-type SectionMetric = {
+export type AnalyticsSectionMetric = {
   label: string;
   value: React.ReactNode;
   tone: MetricTone;
 };
 
-const KPI_TONES: MetricTone[] = ['amber', 'pink', 'cyan', 'purple'];
+function TrendTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: Array<{ name?: string; value?: number; dataKey?: string }>;
+  label?: string;
+}) {
+  if (!active || !payload?.length) return null;
 
-const TOOLTIP_STYLE: React.CSSProperties = {
-  backgroundColor: 'var(--popover)',
-  border: '1px solid var(--border)',
-  borderRadius: '12px',
-  fontSize: '12px',
-  boxShadow: '0 8px 30px rgba(0,0,0,0.08)',
-  padding: '10px 14px',
-};
+  return (
+    <div className="rounded-[10px] bg-[#1D141F] px-3 py-2.5 text-xs text-white shadow-[0_8px_24px_rgba(29,20,31,0.18)]">
+      <p className="mb-1.5 text-[11px] font-medium text-[#E2F343]">{label}</p>
+      <div className="space-y-1">
+        {payload.map((entry) => (
+          <div key={String(entry.dataKey)} className="flex items-center justify-between gap-4">
+            <span className="text-[#B8BEC6]">{entry.name}</span>
+            <span className="font-semibold tabular-nums text-white">{entry.value ?? 0}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export type ResourceAnalyticsId =
-  | 'published-content'
   | 'newsletters'
   | 'articles'
   | 'announcements'
   | 'campaigns';
 
-function AnalyticsMetricCard({ label, value, tone }: SectionMetric) {
+// ─── Metric card ─────────────────────────────────────────────────────────
+
+export function AnalyticsMetricCard({
+  label,
+  value,
+  tone,
+  square,
+}: AnalyticsSectionMetric & { square?: boolean }) {
   return (
     <div
       className={cn(
-        'flex min-w-[110px] flex-1 flex-col items-center justify-center rounded-2xl px-3 py-4 text-center sm:min-w-[130px] sm:px-4 sm:py-5',
+        'flex flex-col items-center justify-center rounded-2xl text-center',
+        square
+          ? 'aspect-square w-full px-2 py-3'
+          : 'min-w-[110px] flex-1 px-3 py-4 sm:min-w-[130px] sm:px-4 sm:py-5',
         METRIC_TONES[tone]
       )}
     >
-      <div className="text-xl font-bold leading-none sm:text-2xl">{value}</div>
-      <p className="mt-2 text-[11px] font-medium leading-tight opacity-85 sm:text-xs">{label}</p>
+      <div
+        className={cn(
+          'font-bold leading-none',
+          square ? 'text-lg sm:text-xl' : 'text-xl sm:text-2xl'
+        )}
+      >
+        {value}
+      </div>
+      <p
+        className={cn(
+          'font-medium leading-tight opacity-85',
+          square ? 'mt-1.5 text-[10px] sm:text-[11px]' : 'mt-2 text-[11px] sm:text-xs'
+        )}
+      >
+        {label}
+      </p>
     </div>
   );
 }
+
+// ─── Section wrapper ─────────────────────────────────────────────────────
 
 export function AnalyticsSection({
   title,
@@ -108,14 +171,22 @@ export function AnalyticsSection({
   children,
 }: {
   title: string;
-  metrics: SectionMetric[];
+  metrics: AnalyticsSectionMetric[];
   children?: React.ReactNode;
 }) {
   return (
     <section className="space-y-3">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-stretch">
-        <div className="flex shrink-0 items-center lg:w-36 xl:w-40">
-          <h2 className="text-base font-semibold tracking-tight">{title}</h2>
+        <div className="flex shrink-0 items-stretch lg:w-36 xl:w-40">
+          <div className="flex w-full items-center gap-2.5 rounded-2xl bg-[#1D141F] px-3.5 py-3.5 dark-card-glow">
+            <span
+              className="h-9 w-1 shrink-0 rounded-full bg-[#E2F343]"
+              aria-hidden
+            />
+            <h2 className="text-base font-bold leading-snug tracking-tight text-white">
+              {title}
+            </h2>
+          </div>
         </div>
         <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {metrics.map((metric) => (
@@ -128,15 +199,127 @@ export function AnalyticsSection({
   );
 }
 
-export function ChartCard({ subtitle, children }: { subtitle?: string; children: React.ReactNode }) {
+// ─── Chart ───────────────────────────────────────────────────────────────
+
+const TREND_MODE_STYLES: Record<
+  TrendMode,
+  { icon: LucideIcon; iconClass: string; chipClass: string }
+> = {
+  volume: {
+    icon: BarChart3,
+    iconClass: 'text-[#1D141F]',
+    chipClass: 'bg-[#EEF1F4]',
+  },
+  reach: {
+    icon: Radar,
+    iconClass: 'text-amber-700',
+    chipClass: 'bg-amber-100',
+  },
+  engagement: {
+    icon: Zap,
+    iconClass: 'text-rose-700',
+    chipClass: 'bg-rose-100',
+  },
+  quality: {
+    icon: Sparkles,
+    iconClass: 'text-emerald-700',
+    chipClass: 'bg-emerald-100',
+  },
+};
+
+function TrendModeSwitch({
+  value,
+  onChange,
+}: {
+  value: TrendMode;
+  onChange: (mode: TrendMode) => void;
+}) {
+  const { t } = useTranslation();
+  const activeLabel = t.statistics.trendModes[value];
+
   return (
-    <Card className="overflow-hidden border dark-card-glow">
-      {subtitle && (
-        <div className="border-b border-border/50 px-4 py-2.5">
-          <p className="text-sm text-muted-foreground">{subtitle}</p>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label={activeLabel}
+          title={activeLabel}
+          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-[#8B939E] transition-colors hover:bg-[#F4F6F8] hover:text-[#1D141F] data-[state=open]:bg-[#EEF1F4] data-[state=open]:text-[#1D141F]"
+        >
+          <ListFilter className="h-3.5 w-3.5" strokeWidth={1.75} />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-[11.5rem] p-1.5">
+        {TREND_MODES.map((mode) => {
+          const selected = value === mode;
+          const style = TREND_MODE_STYLES[mode];
+          const Icon = style.icon;
+
+          return (
+            <DropdownMenuItem
+              key={mode}
+              onClick={() => onChange(mode)}
+              className={cn(
+                'flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-2',
+                selected && 'bg-[#F4F6F8] focus:bg-[#F4F6F8]'
+              )}
+            >
+              <span
+                className={cn(
+                  'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg',
+                  style.chipClass
+                )}
+              >
+                <Icon className={cn('h-3.5 w-3.5', style.iconClass)} strokeWidth={2} />
+              </span>
+              <span
+                className={cn(
+                  'min-w-0 flex-1 text-sm text-[#1D141F]',
+                  selected ? 'font-semibold' : 'font-medium'
+                )}
+              >
+                {t.statistics.trendModes[mode]}
+              </span>
+              {selected && (
+                <Check className="h-3.5 w-3.5 shrink-0 text-[#1D141F]" strokeWidth={2.25} />
+              )}
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function trendKeyLabel(
+  key: string,
+  labels: Record<string, string>
+): string {
+  return labels[key] ?? key;
+}
+
+export function ChartCard({
+  subtitle,
+  trailing,
+  children,
+}: {
+  subtitle?: string;
+  trailing?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card className="gap-0 overflow-hidden py-0 dark-card-glow">
+      {(subtitle || trailing) && (
+        <div className="flex items-center justify-between gap-3 border-b border-border/50 px-4 py-2.5">
+          {subtitle ? (
+            <p className="min-w-0 truncate text-sm text-muted-foreground">{subtitle}</p>
+          ) : (
+            <span />
+          )}
+          {trailing}
         </div>
       )}
-      <CardContent className="px-4 pb-4 pt-3">{children}</CardContent>
+      <CardContent className="px-4 py-3">{children}</CardContent>
     </Card>
   );
 }
@@ -146,276 +329,439 @@ export function ResourceTrendChart({
   data,
   publishedLabel,
   scheduledLabel,
+  showSecondary = true,
 }: {
   resourceId: string;
   data: { name: string; published: number; scheduled: number }[];
   publishedLabel: string;
   scheduledLabel: string;
+  showSecondary?: boolean;
 }) {
-  const publishedGradientId = `stats-published-${resourceId}`;
-  const scheduledGradientId = `stats-scheduled-${resourceId}`;
+  const publishedGradientId = `itm-trend-${resourceId}`;
 
   return (
-    <div className="h-[260px]">
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data}>
-          <defs>
-            <linearGradient id={publishedGradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="oklch(0.55 0.18 250)" stopOpacity={0.15} />
-              <stop offset="100%" stopColor="oklch(0.55 0.18 250)" stopOpacity={0} />
-            </linearGradient>
-            <linearGradient id={scheduledGradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="oklch(0.65 0.15 250)" stopOpacity={0.1} />
-              <stop offset="100%" stopColor="oklch(0.65 0.15 250)" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-          <XAxis
-            dataKey="name"
-            fontSize={13}
-            tickLine={false}
-            axisLine={false}
-            stroke="var(--muted-foreground)"
-            dy={8}
-          />
-          <YAxis
-            fontSize={13}
-            tickLine={false}
-            axisLine={false}
-            stroke="var(--muted-foreground)"
-            dx={-4}
-          />
-          <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'var(--muted)', radius: 4 }} />
-          <Area
-            type="monotone"
-            dataKey="published"
-            stroke="oklch(0.55 0.18 250)"
-            fill={`url(#${publishedGradientId})`}
-            strokeWidth={2.5}
-            name={publishedLabel}
-            isAnimationActive={false}
-          />
-          <Area
-            type="monotone"
-            dataKey="scheduled"
-            stroke="oklch(0.65 0.18 250 / 0.7)"
-            fill={`url(#${scheduledGradientId})`}
-            strokeWidth={2}
-            strokeDasharray="5 5"
-            name={scheduledLabel}
-            isAnimationActive={false}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
+    <div className="space-y-2">
+      <div className="flex items-center gap-4 px-0.5">
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[#5C6470]">
+          <span className="h-1.5 w-3 rounded-full bg-[#1D141F]" />
+          {publishedLabel}
+        </span>
+        {showSecondary && (
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[#5C6470]">
+            <span className="h-0.5 w-3 rounded-full bg-[#E2F343]" />
+            {scheduledLabel}
+          </span>
+        )}
+      </div>
+      <div className="h-[236px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data} margin={{ top: 6, right: 6, left: -10, bottom: 0 }}>
+            <defs>
+              <linearGradient id={publishedGradientId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#1D141F" stopOpacity={0.12} />
+                <stop offset="100%" stopColor="#1D141F" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <XAxis
+              dataKey="name"
+              fontSize={11}
+              tickLine={false}
+              axisLine={false}
+              tick={{ fill: '#8B939E' }}
+              dy={6}
+            />
+            <YAxis
+              fontSize={11}
+              tickLine={false}
+              axisLine={false}
+              tick={{ fill: '#8B939E' }}
+              width={28}
+              dx={-2}
+            />
+            <ChartTooltip
+              content={<TrendTooltip />}
+              cursor={{ stroke: '#E8ECEF', strokeWidth: 1 }}
+            />
+            <Area
+              type="linear"
+              dataKey="published"
+              stroke="#1D141F"
+              fill={`url(#${publishedGradientId})`}
+              strokeWidth={2}
+              name={publishedLabel}
+              isAnimationActive={false}
+              activeDot={{ r: 4, fill: '#1D141F', stroke: '#E2F343', strokeWidth: 2 }}
+            />
+            {showSecondary && (
+              <Area
+                type="linear"
+                dataKey="scheduled"
+                stroke="#E2F343"
+                fill="transparent"
+                strokeWidth={1.75}
+                name={scheduledLabel}
+                isAnimationActive={false}
+                activeDot={{ r: 3.5, fill: '#E2F343', stroke: '#1D141F', strokeWidth: 1.5 }}
+              />
+            )}
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
 
+/** Chart card wired to GET /api/dashboard/trends, with local volume fallback. */
+export function ConnectedResourceTrend({
+  resource,
+  weeksCount,
+  rangeFrom,
+  rangeTo,
+  fallbackData,
+  subtitle,
+  chartId,
+}: {
+  resource: TrendResource;
+  weeksCount?: number;
+  rangeFrom?: Date;
+  rangeTo?: Date;
+  fallbackData: { name: string; published: number; scheduled: number }[];
+  subtitle: string;
+  chartId: string;
+}) {
+  const { t, locale } = useTranslation();
+  const tenantId = useAppStore((s) => s.activeTenantId);
+  const [mode, setMode] = useState<TrendMode>('volume');
+  const { data, isError, isFetching } = useAnalyticsTrend({
+    tenantId,
+    resource,
+    mode,
+    weeks: weeksCount,
+    from: rangeFrom?.toISOString(),
+    to: rangeTo?.toISOString(),
+    locale: locale === 'en' ? 'en' : 'fr',
+  });
+
+  const { chartData, primaryLabel, secondaryLabel, showSecondary, showUnavailable } = useMemo(() => {
+    const keyLabels = t.statistics.trendKeys as Record<string, string>;
+
+    if (data?.available) {
+      return {
+        chartData: data.series.map((point) => ({
+          name: point.name,
+          published: point.primary,
+          scheduled: point.secondary,
+        })),
+        primaryLabel: trendKeyLabel(data.keys.primary, keyLabels),
+        secondaryLabel: trendKeyLabel(data.keys.secondary, keyLabels),
+        showSecondary: data.keys.secondary !== 'none',
+        showUnavailable: false,
+      };
+    }
+
+    if (mode === 'volume') {
+      return {
+        chartData: fallbackData,
+        primaryLabel: t.statistics.published,
+        secondaryLabel: t.statistics.scheduled,
+        showSecondary: true,
+        showUnavailable: false,
+      };
+    }
+
+    return {
+      chartData: fallbackData.map((point) => ({
+        name: point.name,
+        published: 0,
+        scheduled: 0,
+      })),
+      primaryLabel: t.statistics.published,
+      secondaryLabel: t.statistics.scheduled,
+      showSecondary: false,
+      showUnavailable: !isFetching || isError || data?.available === false,
+    };
+  }, [data, fallbackData, isError, isFetching, mode, t.statistics]);
+
+  return (
+    <ChartCard
+      subtitle={subtitle}
+      trailing={<TrendModeSwitch value={mode} onChange={setMode} />}
+    >
+      {showUnavailable ? (
+        <p className="py-16 text-center text-[11px] text-[#8B939E]">
+          {t.statistics.trendUnavailable}
+        </p>
+      ) : (
+        <ResourceTrendChart
+          resourceId={`${chartId}-${mode}`}
+          data={chartData}
+          publishedLabel={primaryLabel}
+          scheduledLabel={secondaryLabel}
+          showSecondary={showSecondary}
+        />
+      )}
+    </ChartCard>
+  );
+}
+
+// ─── Per-type metrics builders ────────────────────────────────────────────
+
+function formatKpiNumber(value: number): string {
+  return value.toLocaleString('fr-FR');
+}
+
+function formatKpiMin(value: number | null): string {
+  if (value === null || value === 0) return '—';
+  return `${value} min`;
+}
+
+function buildNewsletterMetrics(kpis: NewsletterKpis, t: any): AnalyticsSectionMetric[] {
+  return [
+    { label: t.statistics.openRate, value: formatKpiPercent(kpis.openRate), tone: 'amber' },
+    { label: t.statistics.clickRate, value: formatKpiPercent(kpis.clickRate), tone: 'pink' },
+    { label: t.statistics.bounceRate, value: formatKpiPercent(kpis.bounceRate), tone: 'cyan' },
+    { label: t.statistics.totalRecipients, value: formatKpiNumber(kpis.recipientCount), tone: 'purple' },
+  ];
+}
+
+function buildArticleMetrics(kpis: ArticleKpis, t: any): AnalyticsSectionMetric[] {
+  return [
+    { label: t.statistics.totalViews, value: formatKpiNumber(kpis.totalViews), tone: 'amber' },
+    { label: t.statistics.readingTime, value: formatKpiMin(kpis.avgReadingTime), tone: 'pink' },
+    { label: t.statistics.interactionRate, value: formatKpiPercent(kpis.interactionRate), tone: 'cyan' },
+    { label: t.statistics.clickRate, value: formatKpiPercent(kpis.clickRate), tone: 'purple' },
+  ];
+}
+
+function buildAnnouncementMetrics(kpis: AnnouncementKpis, t: any): AnalyticsSectionMetric[] {
+  return [
+    { label: t.statistics.acknowledgmentRate, value: formatKpiPercent(kpis.acknowledgmentRate), tone: 'amber' },
+    { label: t.statistics.totalRecipients, value: formatKpiNumber(kpis.totalRecipients), tone: 'pink' },
+    { label: t.statistics.acknowledgedCount, value: formatKpiNumber(kpis.acknowledgedCount), tone: 'cyan' },
+    { label: t.statistics.clickRate, value: formatKpiPercent(kpis.clickRate), tone: 'purple' },
+  ];
+}
+
+function buildCampaignMetrics(kpis: CampaignKpis, t: any): AnalyticsSectionMetric[] {
+  return [
+    { label: t.statistics.activeCount, value: kpis.activeCount, tone: 'amber' },
+    { label: t.statistics.completedCount, value: kpis.completedCount, tone: 'pink' },
+    { label: t.statistics.totalReach, value: formatKpiNumber(kpis.totalReach), tone: 'cyan' },
+    { label: t.statistics.openRate, value: formatKpiPercent(kpis.avgOpenRate), tone: 'purple' },
+    { label: t.statistics.clickRate, value: formatKpiPercent(kpis.avgClickRate), tone: 'amber' },
+  ];
+}
+
+// ─── Individual panel (used standalone) ──────────────────────────────────
+
 function useResourceAnalytics(resourceId: ResourceAnalyticsId, weeksCount = 12) {
   const { t } = useTranslation();
-  const { campaigns, newsletters, articles, announcements, publishedItems } = useAnalyticsSourceData();
+  const { campaigns, newsletters, articles, announcements } = useAnalyticsSourceData();
 
   const resource = useMemo(() => {
-    const definitions: Record<
-      ResourceAnalyticsId,
-      { id: string; title: string; kpis: ReturnType<typeof computeNewsletterKpis>; publishedCount: number }
-    > = {
-      'published-content': {
-        id: 'published-content',
-        title: t.statistics.contentPublished,
-        kpis: computePublishedContentKpis(publishedItems),
-        publishedCount: publishedItems.filter((item) => item.status === 'published').length,
-      },
+    const base = {
       newsletters: {
         id: 'newsletters',
         title: t.nav.newsletters,
         kpis: computeNewsletterKpis(newsletters),
-        publishedCount: newsletters.filter((item) => item.status === 'published').length,
+        trendItems: newsletters as TrendItem[],
       },
       articles: {
         id: 'articles',
         title: t.nav.articles,
         kpis: computeArticleKpis(articles),
-        publishedCount: articles.filter((item) => item.status === 'published').length,
+        trendItems: articles as TrendItem[],
       },
       announcements: {
         id: 'announcements',
         title: t.nav.announcements,
         kpis: computeAnnouncementKpis(announcements),
-        publishedCount: announcements.filter((item) => item.status === 'published').length,
+        trendItems: announcements as TrendItem[],
       },
       campaigns: {
         id: 'campaigns',
         title: t.nav.campaigns,
         kpis: computeCampaignKpis(campaigns),
-        publishedCount: campaigns.filter(
-          (item) => item.status === 'active' || item.status === 'completed'
-        ).length,
+        trendItems: campaigns.map((c) => ({
+          publishedAt: c.createdAt,
+          scheduledAt: c.startDate,
+          status: c.status === 'active' || c.status === 'completed' ? 'published' : c.status,
+        })),
       },
     };
-
-    return definitions[resourceId];
-  }, [campaigns, newsletters, articles, announcements, publishedItems, resourceId, t.nav, t.statistics]);
+    return base[resourceId];
+  }, [campaigns, newsletters, articles, announcements, resourceId, t.nav]);
 
   const trendData = useMemo(
-    () => generateResourceTrend(weeksCount, resource.publishedCount),
-    [weeksCount, resource.publishedCount]
+    () => generateResourceTrend(weeksCount, resource.trendItems),
+    [weeksCount, resource.trendItems]
   );
 
-  const metrics: SectionMetric[] = useMemo(() => {
-    const kpiLabels = [
-      t.statistics.openRate,
-      t.statistics.clickRate,
-      t.statistics.conversionRate,
-      t.statistics.engagement,
-    ];
-    const kpiValues = [
-      formatKpiPercent(resource.kpis.openRate),
-      formatKpiPercent(resource.kpis.clickRate),
-      formatKpiPercent(resource.kpis.conversionRate),
-      formatKpiPercent(resource.kpis.engagement),
-    ];
-    return kpiLabels.map((label, index) => ({
-      label,
-      value: kpiValues[index],
-      tone: KPI_TONES[index],
-    }));
-  }, [resource.kpis, t.statistics]);
+  const metrics: AnalyticsSectionMetric[] = useMemo(() => {
+    const kpis = resource.kpis;
+    switch (kpis.type) {
+      case 'newsletter':
+        return buildNewsletterMetrics(kpis, t);
+      case 'article':
+        return buildArticleMetrics(kpis, t);
+      case 'announcement':
+        return buildAnnouncementMetrics(kpis, t);
+      case 'campaign':
+        return buildCampaignMetrics(kpis, t);
+    }
+  }, [resource.kpis, t]);
 
   return { resource, trendData, metrics };
 }
 
+function weeksFromRange(from?: Date, to?: Date, fallback = 12): number {
+  if (!from || !to) return fallback;
+  const days =
+    Math.floor((to.getTime() - from.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+  return Math.max(1, Math.min(52, Math.ceil(days / 7)));
+}
+
 export function ResourceAnalyticsPanel({
   resourceId,
-  weeksCount = 12,
+  weeksCount,
+  rangeFrom,
+  rangeTo,
   className,
 }: {
   resourceId: ResourceAnalyticsId;
   weeksCount?: number;
+  rangeFrom?: Date;
+  rangeTo?: Date;
   className?: string;
 }) {
   const { t } = useTranslation();
-  const { resource, trendData, metrics } = useResourceAnalytics(resourceId, weeksCount);
+  const resolvedWeeks = weeksCount ?? weeksFromRange(rangeFrom, rangeTo);
+  const { resource, trendData, metrics } = useResourceAnalytics(resourceId, resolvedWeeks);
 
   return (
     <div className={className}>
       <AnalyticsSection title={resource.title} metrics={metrics}>
-        <ChartCard subtitle={t.statistics.resourceTrend}>
-          <ResourceTrendChart
-            resourceId={resource.id}
-            data={trendData}
-            publishedLabel={t.statistics.published}
-            scheduledLabel={t.statistics.scheduled}
-          />
-        </ChartCard>
+        <ConnectedResourceTrend
+          resource={resource.id}
+          weeksCount={resolvedWeeks}
+          rangeFrom={rangeFrom}
+          rangeTo={rangeTo}
+          fallbackData={trendData}
+          subtitle={t.statistics.resourceTrend}
+          chartId={resource.id}
+        />
       </AnalyticsSection>
     </div>
   );
 }
 
+// ─── Trend item type ─────────────────────────────────────────────────────
+
+type TrendItem = {
+  publishedAt?: string | null;
+  scheduledAt?: string | null;
+  status?: string;
+};
+
+// ─── All panels (dashboard) ──────────────────────────────────────────────
+
 export function useAllResourceAnalytics(weeksCount = 12) {
   const { t } = useTranslation();
-  const { campaigns, newsletters, articles, announcements, publishedItems } = useAnalyticsSourceData();
+  const { campaigns, newsletters, articles, announcements } = useAnalyticsSourceData();
 
   const resources = useMemo(() => {
     return [
       {
-        id: 'published-content' as const,
-        title: t.statistics.contentPublished,
-        kpis: computePublishedContentKpis(publishedItems),
-        publishedCount: publishedItems.filter((item) => item.status === 'published').length,
-      },
-      {
         id: 'newsletters' as const,
         title: t.nav.newsletters,
         kpis: computeNewsletterKpis(newsletters),
-        publishedCount: newsletters.filter((item) => item.status === 'published').length,
+        trendItems: newsletters as TrendItem[],
       },
       {
         id: 'articles' as const,
         title: t.nav.articles,
         kpis: computeArticleKpis(articles),
-        publishedCount: articles.filter((item) => item.status === 'published').length,
+        trendItems: articles as TrendItem[],
       },
       {
         id: 'announcements' as const,
         title: t.nav.announcements,
         kpis: computeAnnouncementKpis(announcements),
-        publishedCount: announcements.filter((item) => item.status === 'published').length,
+        trendItems: announcements as TrendItem[],
       },
       {
         id: 'campaigns' as const,
         title: t.nav.campaigns,
         kpis: computeCampaignKpis(campaigns),
-        publishedCount: campaigns.filter(
-          (item) => item.status === 'active' || item.status === 'completed'
-        ).length,
+        trendItems: campaigns.map((c) => ({
+          publishedAt: c.createdAt,
+          scheduledAt: c.startDate,
+          status: c.status === 'active' || c.status === 'completed' ? 'published' : c.status,
+        })),
       },
     ];
-  }, [campaigns, newsletters, articles, announcements, publishedItems, t.nav, t.statistics]);
+  }, [campaigns, newsletters, articles, announcements, t.nav]);
 
   const resourceTrends = useMemo(
     () =>
       Object.fromEntries(
         resources.map((resource) => [
           resource.id,
-          generateResourceTrend(weeksCount, resource.publishedCount),
+          generateResourceTrend(weeksCount, resource.trendItems),
         ])
       ),
     [resources, weeksCount]
   );
 
-  const kpiLabels = useMemo(
-    () => [
-      t.statistics.openRate,
-      t.statistics.clickRate,
-      t.statistics.conversionRate,
-      t.statistics.engagement,
-    ],
-    [t.statistics]
-  );
-
-  return { resources, resourceTrends, kpiLabels };
+  return { resources, resourceTrends };
 }
 
-const ALL_KPI_TONES: MetricTone[] = ['amber', 'pink', 'cyan', 'purple'];
-
 export function AllResourceAnalyticsPanels({
-  weeksCount = 12,
+  weeksCount,
+  rangeFrom,
+  rangeTo,
   className,
 }: {
   weeksCount?: number;
+  rangeFrom?: Date;
+  rangeTo?: Date;
   className?: string;
 }) {
   const { t } = useTranslation();
-  const { resources, resourceTrends, kpiLabels } = useAllResourceAnalytics(weeksCount);
+  const resolvedWeeks = weeksCount ?? weeksFromRange(rangeFrom, rangeTo);
+  const { resources, resourceTrends } = useAllResourceAnalytics(resolvedWeeks);
 
   return (
     <div className={cn('space-y-8', className)}>
       {resources.map((resource) => {
-        const kpiValues = [
-          formatKpiPercent(resource.kpis.openRate),
-          formatKpiPercent(resource.kpis.clickRate),
-          formatKpiPercent(resource.kpis.conversionRate),
-          formatKpiPercent(resource.kpis.engagement),
-        ];
+        let metrics: AnalyticsSectionMetric[];
 
-        const metrics: SectionMetric[] = kpiLabels.map((label, index) => ({
-          label,
-          value: kpiValues[index],
-          tone: ALL_KPI_TONES[index],
-        }));
+        switch (resource.kpis.type) {
+          case 'newsletter':
+            metrics = buildNewsletterMetrics(resource.kpis, t);
+            break;
+          case 'article':
+            metrics = buildArticleMetrics(resource.kpis, t);
+            break;
+          case 'announcement':
+            metrics = buildAnnouncementMetrics(resource.kpis, t);
+            break;
+          case 'campaign':
+            metrics = buildCampaignMetrics(resource.kpis, t);
+            break;
+        }
 
         return (
           <AnalyticsSection key={resource.id} title={resource.title} metrics={metrics}>
-            <ChartCard subtitle={t.statistics.resourceTrend}>
-              <ResourceTrendChart
-                resourceId={resource.id}
-                data={resourceTrends[resource.id]}
-                publishedLabel={t.statistics.published}
-                scheduledLabel={t.statistics.scheduled}
-              />
-            </ChartCard>
+            <ConnectedResourceTrend
+              resource={resource.id}
+              weeksCount={resolvedWeeks}
+              rangeFrom={rangeFrom}
+              rangeTo={rangeTo}
+              fallbackData={resourceTrends[resource.id]}
+              subtitle={t.statistics.resourceTrend}
+              chartId={resource.id}
+            />
           </AnalyticsSection>
         );
       })}

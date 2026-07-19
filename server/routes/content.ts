@@ -1,16 +1,17 @@
 import { Router } from 'express';
 import * as contentController from '../controllers/content.controller';
 import { requireAuth } from '../middleware/auth';
-import { requireRole } from '../middleware/rbac';
+import { requireRole, requireTenantRole } from '../middleware/rbac';
 import { requireTenantBody, requireTenantQuery } from '../middleware/tenant';
 
 const router = Router();
 const canReview = requireRole('super_admin', 'tenant_admin', 'editor');
+const canWrite = requireTenantRole('editor');     // editor or higher in this workspace
 
 router.get('/stats', requireAuth, requireTenantQuery, contentController.stats);
 router.get('/approved', requireAuth, requireTenantQuery, contentController.approved);
 router.get('/', requireAuth, requireTenantQuery, contentController.list);
-router.post('/', requireAuth, requireTenantBody, contentController.create);
+router.post('/', requireAuth, requireTenantBody, canWrite, contentController.create);
 router.get('/:id', requireAuth, contentController.getById);
 router.patch('/:id', requireAuth, contentController.update);
 router.put('/:id', requireAuth, contentController.update);

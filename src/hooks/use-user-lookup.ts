@@ -1,9 +1,11 @@
 'use client';
 
 import { useCallback, useMemo } from 'react';
+import { useTranslation } from '@/lib/i18n';
 import { useUsers } from './use-users';
 
 export function useUserLookup(tenantId: string) {
+  const { t } = useTranslation();
   const { data: users = [] } = useUsers(tenantId);
 
   const lookup = useMemo(() => {
@@ -23,8 +25,8 @@ export function useUserLookup(tenantId: string) {
   }, [users]);
 
   const getUserName = useCallback(
-    (id: string) => lookup.get(id)?.name ?? 'Inconnu',
-    [lookup]
+    (id: string) => lookup.get(id)?.name ?? t.common.unknownUser,
+    [lookup, t.common.unknownUser]
   );
 
   const getUserInitials = useCallback(

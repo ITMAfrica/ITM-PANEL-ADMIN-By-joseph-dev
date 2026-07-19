@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   ImageIcon,
   Grid3X3,
@@ -23,14 +33,22 @@ import {
   Trash2,
   Copy,
   File,
+  Upload,
+  Loader2,
+  ArrowUpDown,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useTranslation } from '@/lib/i18n';
 import { useAppStore } from '@/lib/store';
 import { useMedia } from '@/hooks/use-media';
+import { useUploadMedia } from '@/hooks/use-upload-media';
+import { useDeleteMedia } from '@/hooks/use-delete-media';
 import { useUserLookup } from '@/hooks/use-user-lookup';
+import { MediaPreviewDialog } from '@/components/media/media-preview-dialog';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { UpgradePlanBanner } from '@/components/upgrade-plan-banner';
+import { EmptyStateIllustration } from '@/components/empty-state-illustration';
 import {
   ViewShell,
   ViewSubNav,
@@ -38,10 +56,17 @@ import {
   ViewToolbar,
   ViewSearchInput,
   ViewOutlineButton,
+  BrandPrimaryButton,
   type ViewTab,
 } from '@/components/view-layout';
+import type { MediaItem } from '@/lib/types';
 
 type MediaTab = 'all' | 'image' | 'video' | 'document' | 'audio';
+type SortKey = 'name' | 'type' | 'size' | 'createdAt';
+type SortDir = 'asc' | 'desc';
+
+const MEDIA_ACCEPT =
+  'image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/quicktime,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,audio/mpeg,audio/mp3,audio/wav,audio/ogg,audio/webm,audio/aac';
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -80,16 +105,93 @@ function getMediaTypeGradient(type: string) {
   }
 }
 
+function getMediaTypeLabel(type: string, t: ReturnType<typeof useTranslation>['t']) {
+  const key = type as keyof typeof t.media;
+  if (key in t.media && typeof t.media[key] === 'string') {
+    return t.media[key] as string;
+  }
+  return type;
+}
+
+function downloadMedia(item: MediaItem) {
+  const anchor = document.createElement('a');
+  anchor.href = item.url;
+  anchor.download = item.name;
+  anchor.target = '_blank';
+  anchor.rel = 'noopener noreferrer';
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+}
+
 export function MediaView() {
   const { t } = useTranslation();
   const activeTenantId = useAppStore((s) => s.activeTenantId);
   const locale = useAppStore((s) => s.locale);
-  const { data: tenantMedia = [] } = useMedia(activeTenantId);
+  const { data: tenantMedia = [], isLoading, isError, refetch } = useMedia(activeTenantId);
+  const uploadMedia = useUploadMedia(activeTenantId);
+  const deleteMedia = useDeleteMedia(activeTenantId);
   const { getUserName, getUserInitials } = useUserLookup(activeTenantId);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState<MediaTab>('all');
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [previewItem, setPreviewItem] = useState<MediaItem | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<MediaItem | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey>('createdAt');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
+
+  const handleFiles = useCallback(
+    async (files: FileList | File[]) => {
+      const list = Array.from(files);
+      if (list.length === 0) return;
+
+      for (const file of list) {
+        try {
+          await uploadMedia.mutateAsync(file);
+          toast.success(t.media.uploadComplete);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : t.media.uploadFailed;
+          toast.error(message);
+        }
+      }
+    },
+    [uploadMedia, t.media.uploadComplete, t.media.uploadFailed]
+  );
+
+  const handleShare = useCallback(
+    async (item: MediaItem) => {
+      try {
+        await navigator.clipboard.writeText(item.url);
+        toast.success(t.media.linkCopied);
+      } catch {
+        toast.error(t.media.uploadFailed);
+      }
+    },
+    [t.media.linkCopied, t.media.uploadFailed]
+  );
+
+  const handleDelete = useCallback(async () => {
+    if (!deleteTarget) return;
+    try {
+      await deleteMedia.mutateAsync(deleteTarget.id);
+      toast.success(t.media.deleteSuccess);
+      setDeleteTarget(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : t.media.deleteFailed;
+      toast.error(message);
+    }
+  }, [deleteTarget, deleteMedia, t.media.deleteSuccess, t.media.deleteFailed]);
+
+  const toggleSort = useCallback((key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((dir) => (dir === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+    setSortKey(key);
+    setSortDir(key === 'name' ? 'asc' : 'desc');
+  }, [sortKey]);
 
   const filtered = useMemo(() => {
     let result = tenantMedia;
@@ -100,8 +202,28 @@ export function MediaView() {
     if (activeTab !== 'all') {
       result = result.filter((m) => m.type === activeTab);
     }
-    return result;
-  }, [tenantMedia, search, activeTab]);
+
+    const sorted = [...result].sort((a, b) => {
+      let cmp = 0;
+      switch (sortKey) {
+        case 'name':
+          cmp = a.name.localeCompare(b.name);
+          break;
+        case 'type':
+          cmp = a.type.localeCompare(b.type);
+          break;
+        case 'size':
+          cmp = a.size - b.size;
+          break;
+        case 'createdAt':
+          cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          break;
+      }
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+
+    return sorted;
+  }, [tenantMedia, search, activeTab, sortKey, sortDir]);
 
   const tabs: ViewTab<MediaTab>[] = [
     { id: 'all', label: t.media.all, icon: <ImageIcon className="h-3.5 w-3.5" /> },
@@ -111,12 +233,56 @@ export function MediaView() {
     { id: 'audio', label: t.media.audio, icon: <Music className="h-3.5 w-3.5" /> },
   ];
 
+  const dateLocale = locale === 'fr' ? 'fr-FR' : 'en-US';
+
+  const renderSortButton = (label: string, key: SortKey, className?: string) => (
+    <button
+      type="button"
+      onClick={() => toggleSort(key)}
+      className={cn(
+        'inline-flex items-center gap-1 text-left font-semibold transition-colors hover:text-foreground',
+        sortKey === key ? 'text-foreground' : 'text-muted-foreground',
+        className
+      )}
+    >
+      {label}
+      <ArrowUpDown className={cn('h-3 w-3', sortKey === key && 'text-[#1D141F]')} />
+    </button>
+  );
+
   return (
     <ViewShell>
       <UpgradePlanBanner variant="media" />
       <ViewSubNav tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
       <ViewTabPanel>
-        <ViewToolbar>
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept={MEDIA_ACCEPT}
+          className="hidden"
+          onChange={(e) => {
+            if (e.target.files) void handleFiles(e.target.files);
+            e.target.value = '';
+          }}
+        />
+
+        <ViewToolbar
+          actions={
+            <BrandPrimaryButton
+              className="gap-1.5"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadMedia.isPending}
+            >
+              {uploadMedia.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Upload className="h-4 w-4" />
+              )}
+              {t.media.upload}
+            </BrandPrimaryButton>
+          }
+        >
           <ViewSearchInput
             value={search}
             onChange={setSearch}
@@ -136,17 +302,32 @@ export function MediaView() {
           </div>
         </ViewToolbar>
 
-        {filtered.length === 0 ? (
+        {isLoading ? (
           <Card className="overflow-hidden dark-card-glow">
-            <CardContent className="py-12 flex flex-col items-center gap-3">
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-muted/50">
-                <ImageIcon className="h-7 w-7 text-muted-foreground/50" />
-              </div>
-              <p className="text-muted-foreground text-sm">{t.media.noFiles}</p>
+            <CardContent className="flex flex-col items-center gap-3 py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">{t.common.loading}</p>
+            </CardContent>
+          </Card>
+        ) : isError ? (
+          <Card className="overflow-hidden dark-card-glow">
+            <CardContent className="flex flex-col items-center gap-3 py-12">
+              <EmptyStateIllustration illustrationId="error-server" size="sm" />
+              <p className="text-sm text-muted-foreground">{t.media.loadError}</p>
+              <Button variant="outline" size="sm" onClick={() => void refetch()}>
+                {t.common.refresh}
+              </Button>
+            </CardContent>
+          </Card>
+        ) : filtered.length === 0 ? (
+          <Card className="overflow-hidden dark-card-glow">
+            <CardContent className="flex flex-col items-center gap-3 py-12">
+              <EmptyStateIllustration series2Id="media-galaxy" size="md" />
+              <p className="text-sm text-muted-foreground">{t.media.noFiles}</p>
             </CardContent>
           </Card>
         ) : viewMode === 'grid' ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             <AnimatePresence>
               {filtered.map((media, idx) => {
                 const Icon = getMediaTypeIcon(media.type);
@@ -161,8 +342,8 @@ export function MediaView() {
                     whileHover={{ y: -4, scale: 1.02 }}
                     className="group"
                   >
-                    <Card className="overflow-hidden border-border/50 shadow-sm hover:shadow-md transition-shadow">
-                      <div className={`relative aspect-square bg-gradient-to-br ${gradient} flex items-center justify-center`}>
+                    <Card className="overflow-hidden shadow-sm transition-shadow hover:shadow-md">
+                      <div className={`relative flex aspect-square items-center justify-center bg-gradient-to-br ${gradient}`}>
                         {media.type === 'image' ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
@@ -171,34 +352,62 @@ export function MediaView() {
                             className="h-full w-full object-cover"
                           />
                         ) : (
-                          <div className={`p-3 rounded-2xl ${typeColor} border`}>
+                          <div className={`rounded-2xl border p-3 ${typeColor}`}>
                             <Icon className="h-8 w-8" />
                           </div>
                         )}
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-colors group-hover:bg-black/30 group-hover:opacity-100">
                           <div className="flex gap-1.5">
-                            <Button size="sm" variant="secondary" className="h-7 w-7 p-0 rounded-full">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="h-7 w-7 rounded-full p-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPreviewItem(media);
+                              }}
+                            >
                               <Eye className="h-3.5 w-3.5" />
                             </Button>
-                            <Button size="sm" variant="secondary" className="h-7 w-7 p-0 rounded-full">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="h-7 w-7 rounded-full p-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                downloadMedia(media);
+                              }}
+                            >
                               <Download className="h-3.5 w-3.5" />
                             </Button>
-                            <Button size="sm" variant="secondary" className="h-7 w-7 p-0 rounded-full text-rose-600">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="h-7 w-7 rounded-full p-0 text-rose-600"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteTarget(media);
+                              }}
+                            >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </div>
                         </div>
                       </div>
                       <CardContent className="p-3">
-                        <p className="text-sm font-medium truncate" title={media.name}>{media.name}</p>
-                        <div className="flex items-center justify-between mt-1">
-                          <Badge variant="outline" className={`${typeColor} text-xs px-1.5 py-0 h-5`}>
-                            {t.media[media.type as keyof typeof t.media] || media.type}
+                        <p className="truncate text-sm font-medium" title={media.name}>{media.name}</p>
+                        <div className="mt-1 flex items-center justify-between">
+                          <Badge variant="outline" className={`${typeColor} h-5 px-1.5 py-0 text-xs`}>
+                            {getMediaTypeLabel(media.type, t)}
                           </Badge>
                           <span className="text-sm text-muted-foreground">{formatFileSize(media.size)}</span>
                         </div>
-                        <p className="text-sm text-muted-foreground mt-1.5">
-                          {new Date(media.createdAt).toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        <p className="mt-1.5 text-sm text-muted-foreground">
+                          {new Date(media.createdAt).toLocaleDateString(dateLocale, {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
                         </p>
                       </CardContent>
                     </Card>
@@ -208,16 +417,16 @@ export function MediaView() {
             </AnimatePresence>
           </div>
         ) : (
-          <Card className="border-border/50 shadow-sm overflow-hidden">
+          <Card className="overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border/50 bg-muted/30">
-                    <th className="text-left font-semibold p-3">{t.media.fileName}</th>
-                    <th className="text-left font-semibold p-3 hidden sm:table-cell">{t.media.fileType}</th>
-                    <th className="text-left font-semibold p-3 hidden md:table-cell">{t.media.fileSize}</th>
-                    <th className="text-left font-semibold p-3 hidden lg:table-cell">{t.media.modified}</th>
-                    <th className="text-left font-semibold p-3 hidden lg:table-cell">{t.media.owner}</th>
+                    <th className="p-3 text-left">{renderSortButton(t.media.fileName, 'name')}</th>
+                    <th className="hidden p-3 text-left sm:table-cell">{renderSortButton(t.media.fileType, 'type')}</th>
+                    <th className="hidden p-3 text-left md:table-cell">{renderSortButton(t.media.fileSize, 'size')}</th>
+                    <th className="hidden p-3 text-left lg:table-cell">{renderSortButton(t.media.added, 'createdAt')}</th>
+                    <th className="hidden p-3 text-left lg:table-cell">{t.media.owner}</th>
                     <th className="w-12" />
                   </tr>
                 </thead>
@@ -231,7 +440,8 @@ export function MediaView() {
                         initial={{ opacity: 0, x: -8 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: idx * 0.03, duration: 0.25 }}
-                        className="group border-b border-border/30 hover:bg-muted/30 transition-colors cursor-pointer"
+                        className="group cursor-pointer border-b border-border/30 transition-colors hover:bg-muted/30"
+                        onClick={() => setPreviewItem(media)}
                       >
                         <td className="p-3">
                           <div className="flex items-center gap-2.5">
@@ -245,27 +455,31 @@ export function MediaView() {
                                 />
                               </div>
                             ) : (
-                              <div className={`p-1.5 rounded-lg ${typeColor} border`}>
+                              <div className={`rounded-lg border p-1.5 ${typeColor}`}>
                                 <Icon className="h-4 w-4" />
                               </div>
                             )}
-                            <span className="font-medium truncate max-w-[200px]">{media.name}</span>
+                            <span className="max-w-[200px] truncate font-medium">{media.name}</span>
                           </div>
                         </td>
-                        <td className="p-3 hidden sm:table-cell">
-                          <Badge variant="outline" className={`${typeColor} text-sm px-1.5 py-0 h-5`}>
-                            {t.media[media.type as keyof typeof t.media] || media.type}
+                        <td className="hidden p-3 sm:table-cell">
+                          <Badge variant="outline" className={`${typeColor} h-5 px-1.5 py-0 text-sm`}>
+                            {getMediaTypeLabel(media.type, t)}
                           </Badge>
                         </td>
-                        <td className="p-3 hidden md:table-cell text-muted-foreground font-mono text-xs">
+                        <td className="hidden p-3 font-mono text-xs text-muted-foreground md:table-cell">
                           {formatFileSize(media.size)}
                         </td>
-                        <td className="p-3 hidden lg:table-cell text-muted-foreground text-xs">
-                          {new Date(media.createdAt).toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        <td className="hidden p-3 text-xs text-muted-foreground lg:table-cell">
+                          {new Date(media.createdAt).toLocaleDateString(dateLocale, {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
                         </td>
-                        <td className="p-3 hidden lg:table-cell">
+                        <td className="hidden p-3 lg:table-cell">
                           <div className="flex items-center gap-1.5">
-                            <div className="h-5 w-5 rounded-full bg-[oklch(0.55_0.18_250/0.1)] flex items-center justify-center text-xs font-semibold text-[oklch(0.55_0.18_250)]">
+                            <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[oklch(0.55_0.18_250/0.1)] text-xs font-semibold text-[oklch(0.55_0.18_250)]">
                               {getUserInitials(media.uploadedBy)}
                             </div>
                             <span className="text-xs text-muted-foreground">{getUserName(media.uploadedBy)}</span>
@@ -274,15 +488,52 @@ export function MediaView() {
                         <td className="p-3">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0 opacity-0 transition-opacity group-hover:opacity-100"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-44">
-                              <DropdownMenuItem className="gap-2"><Eye className="h-3.5 w-3.5" /> {t.media.preview}</DropdownMenuItem>
-                              <DropdownMenuItem className="gap-2"><Download className="h-3.5 w-3.5" /> {t.media.download}</DropdownMenuItem>
-                              <DropdownMenuItem className="gap-2"><Copy className="h-3.5 w-3.5" /> {t.media.share}</DropdownMenuItem>
-                              <DropdownMenuItem className="gap-2 text-rose-600 focus:text-rose-600"><Trash2 className="h-3.5 w-3.5" /> {t.common.delete}</DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="gap-2"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPreviewItem(media);
+                                }}
+                              >
+                                <Eye className="h-3.5 w-3.5" /> {t.media.preview}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="gap-2"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  downloadMedia(media);
+                                }}
+                              >
+                                <Download className="h-3.5 w-3.5" /> {t.media.download}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="gap-2"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void handleShare(media);
+                                }}
+                              >
+                                <Copy className="h-3.5 w-3.5" /> {t.media.share}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="gap-2 text-rose-600 focus:text-rose-600"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeleteTarget(media);
+                                }}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" /> {t.common.delete}
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </td>
@@ -295,6 +546,37 @@ export function MediaView() {
           </Card>
         )}
       </ViewTabPanel>
+
+      <MediaPreviewDialog
+        item={previewItem}
+        onOpenChange={(open) => {
+          if (!open) setPreviewItem(null);
+        }}
+      />
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t.common.delete}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t.media.deleteConfirm.replace('{name}', deleteTarget?.name ?? '')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t.common.cancel}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-rose-600 hover:bg-rose-700"
+              disabled={deleteMedia.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                void handleDelete();
+              }}
+            >
+              {deleteMedia.isPending ? t.common.loading : t.common.delete}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </ViewShell>
   );
 }

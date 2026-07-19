@@ -23,7 +23,7 @@ import {
 import type { PageId } from '@/lib/types';
 import {
   ALL_NAV_ITEMS,
-  SECTION_NAV,
+  HEADER_SECTION_NAV,
   getSectionForPage,
   getSectionItems,
   isDashboardSidebarPage,
@@ -234,7 +234,7 @@ export function AppSidebar() {
       {/* Mobile section switcher — header icons hidden below lg */}
       <div className="lg:hidden px-2 py-2 flex-shrink-0 border-b border-sidebar-border/60">
         <div className="flex gap-1 overflow-x-auto scrollbar-thin">
-          {SECTION_NAV.map(({ key, icon: Icon, defaultPage }) => {
+          {HEADER_SECTION_NAV.map(({ key, icon: Icon, defaultPage }) => {
             const isActive = activeSection === key;
             return (
               <button
@@ -355,7 +355,7 @@ export function AppSidebar() {
         {/* Desktop sidebar — below fixed top bar */}
         <aside
           className={cn(
-            'hidden lg:flex flex-col fixed left-0 top-18 bottom-0 z-40 transition-all duration-300 border-r border-sidebar-border/80 bg-sidebar shadow-[1px_0_0_rgba(0,0,0,0.04)]',
+            'hidden lg:flex flex-col fixed left-0 top-18 bottom-0 z-40 transition-all duration-300 bg-sidebar',
             sidebarCollapsed ? 'w-[68px]' : 'w-[260px]'
           )}
         >

@@ -114,7 +114,11 @@ export function TemplatesView() {
           </ViewDataTableHeader>
           <ViewDataTableBody>
             {filtered.length === 0 ? (
-              <ViewDataTableEmpty colSpan={7} message={t.templates.noResults} />
+              <ViewDataTableEmpty
+                colSpan={7}
+                message={t.templates.noResults}
+                illustrationId="compose-newsletter"
+              />
             ) : (
               filtered.map((template) => {
                 const typeLabel =

@@ -2,6 +2,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   LayoutDashboard,
   Calendar,
+  Send,
   BookOpen,
   ImageIcon,
   LayoutTemplate,
@@ -9,19 +10,17 @@ import {
   CheckCircle,
   Archive,
   Zap,
-  BarChart3,
-  PieChart,
   Users,
   Shield,
   Building2,
   ScrollText,
+  BookMarked,
 } from 'lucide-react';
 import type { PageId } from './types';
 
 export type SectionKey =
   | 'communication'
   | 'contentManagement'
-  | 'analysis'
   | 'administration';
 
 export interface NavItemDef {
@@ -32,12 +31,14 @@ export interface NavItemDef {
 export const SECTION_NAV: { key: SectionKey; icon: LucideIcon; defaultPage: PageId }[] = [
   { key: 'communication', icon: LayoutDashboard, defaultPage: 'dashboard' },
   { key: 'contentManagement', icon: BookOpen, defaultPage: 'library' },
-  { key: 'analysis', icon: BarChart3, defaultPage: 'statistics' },
   { key: 'administration', icon: Shield, defaultPage: 'users' },
 ];
 
+/** Top bar + mobile section switcher — administration lives in Settings only. */
+export const HEADER_SECTION_NAV = SECTION_NAV.filter((s) => s.key !== 'administration');
+
 export const SECTION_ITEMS: Record<SectionKey, NavItemDef[]> = {
-  communication: [{ icon: LayoutDashboard, pageId: 'dashboard' }],
+  communication: [{ icon: LayoutDashboard, pageId: 'dashboard' }, { icon: BookMarked, pageId: 'documentation' }],
   contentManagement: [
     { icon: BookOpen, pageId: 'library' },
     { icon: ImageIcon, pageId: 'media' },
@@ -46,14 +47,11 @@ export const SECTION_ITEMS: Record<SectionKey, NavItemDef[]> = {
     { icon: CheckCircle, pageId: 'published' },
     { icon: Archive, pageId: 'archive' },
   ],
-  analysis: [
-    { icon: BarChart3, pageId: 'statistics' },
-    { icon: PieChart, pageId: 'reports' },
-  ],
   administration: [
     { icon: Users, pageId: 'users' },
     { icon: Shield, pageId: 'roles' },
     { icon: Building2, pageId: 'tenants' },
+    { icon: Users, pageId: 'workspace-members' },
     { icon: ScrollText, pageId: 'audit' },
     { icon: Zap, pageId: 'automations' },
   ],
@@ -74,8 +72,8 @@ export const PAGE_SECTION_MAP: Partial<Record<PageId, SectionKey>> = {
   drafts: 'contentManagement',
   published: 'contentManagement',
   archive: 'contentManagement',
-  statistics: 'analysis',
-  reports: 'analysis',
+  reports: 'communication',
+  documentation: 'communication',
   users: 'administration',
   roles: 'administration',
   tenants: 'administration',
@@ -100,6 +98,7 @@ export function shouldShowAppSidebar(page: PageId): boolean {
 /** Quick-access pages in the top bar center nav (beside section icons). */
 export const HEADER_PAGE_NAV: NavItemDef[] = [
   { icon: Calendar, pageId: 'editorial-calendar' },
+  { icon: Send, pageId: 'conversation' },
 ];
 
 export const ALL_NAV_ITEMS: NavItemDef[] = Object.values(SECTION_ITEMS).flat();

@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" fill="none" role="img" aria-labelledby="t">
+  <title id="t">Théâtre calendrier</title>
+  <defs>
+    <linearGradient id="gPaper" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FAFBFC"/>
+      <stop offset="100%" stop-color="#EEF2F5"/>
+    </linearGradient>
+    <linearGradient id="gInk" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2A2030"/>
+      <stop offset="100%" stop-color="#1D141F"/>
+    </linearGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <clipPath id="frame"><rect width="640" height="480" rx="32"/></clipPath>
+  </defs>
+  <g clip-path="url(#frame)">
+    <rect width="640" height="480" fill="url(#gPaper)"/>
+    <circle cx="560" cy="-20" r="160" fill="#E2F343" fill-opacity="0.18"/>
+    <circle cx="40" cy="460" r="140" fill="#1D141F" fill-opacity="0.07"/>
+    <path d="M0 360c80-40 160-20 240 10s160 40 240-10 120-50 160-20v140H0V360Z" fill="#E8ECEF" fill-opacity="0.35"/>
+
+    <!-- stage curtains -->
+    <path d="M40 40c40 80 40 160 0 280h80V40H40Z" fill="#D95800" opacity="0.85"/>
+    <path d="M600 40c-40 80-40 160 0 280h-80V40H600Z" fill="#D95800" opacity="0.85"/>
+    <path d="M40 40h560" stroke="#E2F343" stroke-width="8"/>
+    <!-- calendar panel -->
+    <rect x="150" y="90" width="340" height="260" rx="20" fill="url(#gInk)"/>
+    <rect x="150" y="90" width="340" height="56" rx="20" fill="#E2F343"/>
+    <rect x="150" y="128" width="340" height="18" fill="#E2F343"/>
+    <rect x="178" y="168" width="40" height="30" rx="6" fill="#E8ECEF" opacity="0.22"/>
+    <rect x="234" y="168" width="40" height="30" rx="6" fill="#E8ECEF" opacity="0.22"/>
+    <rect x="290" y="168" width="40" height="30" rx="6" fill="#E8ECEF" opacity="0.22"/>
+    <rect x="346" y="168" width="40" height="30" rx="6" fill="#E8ECEF" opacity="0.22"/>
+    <rect x="402" y="168" width="40" height="30" rx="6" fill="#E8ECEF" opacity="0.22"/>
+    <rect x="178" y="210" width="40" height="30" rx="6" fill="#E8ECEF" opacity="0.22"/>
+    <rect x="234" y="210" width="40" height="30" rx="6" fill="#E8ECEF" opacity="0.22"/>
+    <rect x="290" y="210" width="40" height="30" rx="6" fill="#E2F343" opacity="1"/>
+    <rect x="346" y="210" width="40" height="30" rx="6" fill="#E8ECEF" opacity="0.22"/>
+    <rect x="402" y="210" width="40" height="30" rx="6" fill="#E8ECEF" opacity="0.22"/>
+    <rect x="178" y="252" width="40" height="30" rx="6" fill="#E8ECEF" opacity="0.22"/>
+    <rect x="234" y="252" width="40" height="30" rx="6" fill="#E8ECEF" opacity="0.22"/>
+    <rect x="290" y="252" width="40" height="30" rx="6" fill="#E8ECEF" opacity="0.22"/>
+    <rect x="346" y="252" width="40" height="30" rx="6" fill="#E8ECEF" opacity="0.22"/>
+    <rect x="402" y="252" width="40" height="30" rx="6" fill="#E8ECEF" opacity="0.22"/>
+    <rect x="178" y="294" width="40" height="30" rx="6" fill="#E8ECEF" opacity="0.22"/>
+    <rect x="234" y="294" width="40" height="30" rx="6" fill="#E8ECEF" opacity="0.22"/>
+    <rect x="290" y="294" width="40" height="30" rx="6" fill="#E8ECEF" opacity="0.22"/>
+    <rect x="346" y="294" width="40" height="30" rx="6" fill="#E8ECEF" opacity="0.22"/>
+    <rect x="402" y="294" width="40" height="30" rx="6" fill="#E8ECEF" opacity="0.22"/>
+    <!-- spotlight -->
+    <path d="M320 40l80 200H240L320 40Z" fill="#E2F343" opacity="0.12"/>
+  </g>
+</svg>

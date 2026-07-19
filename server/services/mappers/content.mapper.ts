@@ -1,5 +1,18 @@
 import { parseMetadata, parseTags } from './json';
 
+function deriveExcerpt(body: string): string {
+  return body
+    .replace(/!\[[^\]]*]\([^)]+\)/g, '')
+    .replace(/\[[^\]]+]\([^)]+\)/g, '$1')
+    .replace(/[#*_>]/g, '')
+    .replace(/\n{2,}/g, '\n')
+    .trim()
+    .split('\n')
+    .slice(0, 2)
+    .join(' ')
+    .slice(0, 200);
+}
+
 type ContentStatus = 'draft' | 'review' | 'approved' | 'scheduled' | 'published' | 'archived';
 type ContentType = 'newsletter' | 'article' | 'announcement' | 'communique' | 'campaign';
 type ContentPriority = 'low' | 'medium' | 'high' | 'urgent';
@@ -57,7 +70,6 @@ type DbContent = {
   type: string;
   status: string;
   title: string;
-  excerpt: string;
   body: string;
   tenantId: string;
   authorId: string | null;
@@ -84,7 +96,7 @@ function baseContent(row: DbContent): ContentItem {
     id: row.id,
     type: row.type as ContentType,
     title: row.title,
-    excerpt: row.excerpt,
+    excerpt: deriveExcerpt(row.body),
     status: row.status as ContentStatus,
     priority: row.priority as ContentPriority,
     authorId: row.authorId ?? '',
@@ -104,13 +116,15 @@ function baseContent(row: DbContent): ContentItem {
 export function toNewsletter(row: DbContent): Newsletter {
   const meta = parseMetadata(row.metadata);
   const base = baseContent(row);
+  const metaOpenRate = typeof meta.openRate === 'number' ? meta.openRate : undefined;
+  const metaClickRate = typeof meta.clickRate === 'number' ? meta.clickRate : undefined;
   return {
     ...base,
     type: 'newsletter',
     subject: (meta.subject as string) ?? row.title,
     recipientCount: (meta.recipientCount as number) ?? 0,
-    openRate: (meta.openRate as number) ?? base.openRate ?? 0,
-    clickRate: base.clickRate ?? 0,
+    openRate: metaOpenRate ?? base.openRate ?? 0,
+    clickRate: metaClickRate ?? base.clickRate ?? 0,
     bounceRate: (meta.bounceRate as number) ?? 0,
     unsubscribeRate: (meta.unsubscribeRate as number) ?? 0,
     channelIds: (meta.channelIds as string[]) ?? [],
@@ -157,13 +171,30 @@ export function mapContent(row: DbContent): ContentItem | Newsletter | Article |
   }
 }
 
+export type ContentDetail = ReturnType<typeof mapContentDetail>;
+
+export function mapContentDetail(row: DbContent) {
+  const meta = parseMetadata(row.metadata);
+  return {
+    ...mapContent(row),
+    body: row.body,
+    metadata: meta,
+  };
+}
+
 export function toApprovedContentItem(row: DbContent) {
   const meta = parseMetadata(row.metadata);
+  const siteClickRate =
+    row.viewCount > 0 ? Math.round((row.clickCount / row.viewCount) * 1000) / 10 : 0;
+  const clickRate =
+    row.type === 'newsletter' && typeof meta.clickRate === 'number'
+      ? meta.clickRate
+      : siteClickRate;
   return {
     id: row.id,
     type: row.type,
     title: row.title,
-    excerpt: row.excerpt,
+    excerpt: deriveExcerpt(row.body),
     status: row.status,
     priority: row.priority,
     authorId: row.authorId || (meta.authorId as string) || 'u-1',
@@ -174,7 +205,7 @@ export function toApprovedContentItem(row: DbContent) {
     updatedAt: row.updatedAt.toISOString(),
     viewCount: row.viewCount,
     openRate: (meta.openRate as number) || 0,
-    clickRate: row.viewCount > 0 ? Math.round((row.clickCount / row.viewCount) * 1000) / 10 : 0,
+    clickRate,
     channelIds: (meta.channelIds as string[]) || [],
   };
 }

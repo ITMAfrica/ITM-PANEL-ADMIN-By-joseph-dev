@@ -49,6 +49,7 @@ const roleLabelKeys: Record<UserRole, string> = {
   editor: 'editor',
   contributor: 'contributor',
   reader: 'reader',
+  member: 'member',
 };
 
 const statusColors: Record<UserStatus, { bg: string; text: string; border: string }> = {
@@ -113,7 +114,7 @@ export function UsersView() {
       users = users.filter((u) => u.tenantId === tenantFilter);
     }
     if (roleFilter !== 'all') {
-      users = users.filter((u) => u.role === roleFilter);
+      users = users.filter((u) => u.tenantRole === roleFilter);
     }
     if (statusFilter !== 'all') {
       users = users.filter((u) => u.status === statusFilter);
@@ -226,10 +227,14 @@ export function UsersView() {
           </ViewDataTableHeader>
           <ViewDataTableBody>
             {filteredUsers.length === 0 ? (
-              <ViewDataTableEmpty colSpan={7} message={t.users.noResults} />
+              <ViewDataTableEmpty
+                colSpan={7}
+                message={t.users.noResults}
+                series2Id="audience-wave"
+              />
             ) : (
               filteredUsers.map((user) => {
-                const roleColor = roleColors[user.role];
+                const roleColor = roleColors[user.tenantRole];
                 const statusColor = statusColors[user.status];
                 return (
                   <ViewDataTableRow key={user.id}>
@@ -242,7 +247,7 @@ export function UsersView() {
                     </ViewDataTableCell>
                     <ViewDataTableCell>
                       <ViewStatusText
-                        label={getRoleLabel(user.role)}
+                        label={getRoleLabel(user.tenantRole)}
                         className={cn(roleColor.bg, roleColor.text, roleColor.border)}
                       />
                     </ViewDataTableCell>

@@ -1,0 +1,60 @@
+# Render Blueprint — ITM Panel Admin (API)
+#
+# Déploiement :
+#   1. Connecter ce repo dans le dashboard Render (Blueprints).
+#   2. Définir les variables sensibles (AUTH_SECRET, PUBLIC_API_KEY, DATABASE_URL,
+#      AZURE_STORAGE_*) dans les env groups ou directement sur le service.
+#   3. Le cron job appelle POST /api/newsletters/dispatch toutes les 15 min (UTC)
+#      avec la clé publique, ce qui déclenche l'envoi des newsletters planifiées.
+#
+# Le cron a besoin de l'URL publique de l'API : renseignez API_BASE_URL avec
+# l'URL du service web ci-dessous, ex. https://itm-api.onrender.com
+
+envVars:
+  - key: NODE_ENV
+    value: production
+
+services:
+  # --- API Express (déclenche aussi le scheduler interne au démarrage) ---
+  - type: web
+    name: itm-api
+    runtime: docker
+    dockerfilePath: server/Dockerfile
+    plan: starter
+    region: frankfurt
+    healthCheckPath: /api
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: "3001"
+      - key: DATABASE_URL
+        sync: false
+      - key: AUTH_SECRET
+        sync: false
+      - key: PUBLIC_API_KEY
+        sync: false
+      - key: AZURE_STORAGE_CONNECTION_STRING
+        sync: false
+      - key: API_BASE_URL
+        value: https://itm-api.onrender.com
+
+  # --- Cron job : dispatch des newsletters planifiées ---
+  - type: cron
+    name: itm-newsletter-dispatch
+    runtime: docker
+    dockerfilePath: server/Dockerfile
+    plan: free
+    region: frankfurt
+    schedule: "*/15 * * * *"   # NCRONTAB (UTC) : toutes les 15 minutes
+    command: >-
+      sh -c 'curl -fsS -X POST
+      -H "x-api-key: $PUBLIC_API_KEY"
+      "$API_BASE_URL/api/newsletters/dispatch"'
+    envVars:
+      - key: API_BASE_URL
+        value: https://itm-api.onrender.com
+      - key: PUBLIC_API_KEY
+        sync: false

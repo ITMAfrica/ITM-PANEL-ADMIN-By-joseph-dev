@@ -1,8 +1,5 @@
 import multer from 'multer';
-import path from 'path';
-import { randomUUID } from 'crypto';
 import type { Request } from 'express';
-import { getTenantUploadDir, sanitizeFilename } from '../lib/uploads-dir';
 
 const MAX_FILE_SIZE_MB = Number(process.env.MAX_UPLOAD_SIZE_MB) || 10;
 
@@ -14,23 +11,21 @@ const ALLOWED_MIME_TYPES = new Set([
   'video/mp4',
   'video/webm',
   'video/quicktime',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/plain',
+  'audio/mpeg',
+  'audio/mp3',
+  'audio/wav',
+  'audio/ogg',
+  'audio/webm',
+  'audio/aac',
 ]);
 
-const storage = multer.diskStorage({
-  destination: (req, _file, cb) => {
-    const tenantId = req.authorizedTenantId ?? '';
-    if (!tenantId) {
-      cb(new Error('tenantId required'), '');
-      return;
-    }
-    cb(null, getTenantUploadDir(tenantId));
-  },
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    const base = sanitizeFilename(path.basename(file.originalname, ext));
-    cb(null, `${randomUUID()}-${base}${ext}`);
-  },
-});
+const storage = multer.memoryStorage();
 
 function fileFilter(_req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) {
   if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {

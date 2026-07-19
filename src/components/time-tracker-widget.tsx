@@ -52,7 +52,7 @@ export function TimeTrackerWidget() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] as const }}
     >
-      <Card className="overflow-hidden border shadow-md hover:shadow-lg transition-shadow duration-300">
+      <Card className="overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300">
         {/* Teal gradient header */}
         <div className="bg-gradient-to-r from-[oklch(0.55_0.18_250)] to-[oklch(0.45_0.18_250)] px-4 py-3 text-white">
           <div className="flex items-center gap-2">

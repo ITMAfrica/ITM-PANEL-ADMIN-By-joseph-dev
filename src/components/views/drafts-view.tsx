@@ -18,7 +18,6 @@ import {
   ViewOutlineButton,
 } from '@/components/view-layout';
 import { UpgradePlanBanner } from '@/components/upgrade-plan-banner';
-import { ResourceAnalyticsPanel } from '@/components/resource-analytics';
 import {
   ViewDataTable,
   ViewDataTableHeader,
@@ -123,8 +122,6 @@ export function DraftsView() {
       <UpgradePlanBanner variant="drafts" />
       <ViewSubNav tabs={tabs} activeTab={activeTab} onTabChange={() => {}} />
       <ViewTabPanel>
-        <ResourceAnalyticsPanel resourceId="published-content" />
-
         <ViewToolbar>
           <ViewSearchInput value={search} onChange={setSearch} placeholder={t.drafts.search} />
           <ViewOutlineButton
@@ -154,7 +151,11 @@ export function DraftsView() {
           </ViewDataTableHeader>
           <ViewDataTableBody>
             {filtered.length === 0 ? (
-              <ViewDataTableEmpty colSpan={5} message={t.drafts.noResults} />
+              <ViewDataTableEmpty
+                colSpan={5}
+                message={t.drafts.noResults}
+                illustrationId="drafts"
+              />
             ) : (
               filtered.map((draft) => {
                 const typeColor = getContentTypeColor(draft.contentType);

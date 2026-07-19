@@ -1,0 +1,387 @@
+<!DOCTYPE html><html class="dark" lang="fr" style="width: 1280px; height: 1024px; overflow: hidden; position: relative;"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>ITM PANEL ADMIN - Connexion</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&amp;display=swap" rel="stylesheet">
+<style>@import url(https://fonts.cdnfonts.com/css/geist);
+body {
+    font-family: "Geist", sans-serif;
+    background-color: #131313;
+    color: #e5e2e1;
+    overflow-x: hidden
+    }
+.glass-card {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1)
+    }
+.light-glass-card {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(25px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07)
+    }
+.grainy-bg {
+    background-image: url(https://lh3.googleusercontent.com/aida-public/AB6AXuDM4e8vFVBj863BaVn8Ma7TcruOjFV4ZkkvXOYhrjGc1HUh6LQoiZ6cUIp6HpLVC4rEBHNum1T0_aVfaIlL0AqBGacbw4I9TiGQBMpXku_9XUCCSFlW1rPgN4sztGfgTSjJZs9kDV97I4-PzZ2Ub7wjH9NT1rJSCVXVpRvXSg-0evzTDdXRXh-uK3T85mM68eeEF6EXWL2C4BIHY8PO68zWp0vhalRCte8vkE3BDkR2DEFFoATHfKCZjZAOBCqqlvt1yRo885v0Cjw);
+    filter: contrast(150%) brightness(100%);
+    opacity: 0.15;
+    pointer-events: none
+    }
+.citron-glow:focus {
+    box-shadow: 0 0 15px rgba(212, 255, 0, 0.3);
+    border-color: #b0d500
+    }
+.material-symbols-outlined {
+    font-variation-settings: "FILL" 0, "wght" 300, "GRAD" 0, "opsz" 24
+    }
+.bg-gradient-premium {
+    background: radial-gradient(circle at top left, #1a1033 0%, #0e0e0e 60%)
+    }
+.grid-pattern {
+    background-image: radial-gradient(#e5e2e1 0.5px, transparent 0.5px);
+    background-size: 24px 24px;
+    opacity: 0.2
+    }</style>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                "surface-tint": "#b0d500",
+                "surface": "#131313",
+                "surface-bright": "#3a3939",
+                "tertiary": "#ffffff",
+                "secondary-fixed-dim": "#c8c6c5",
+                "on-primary-container": "#596c00",
+                "primary-fixed-dim": "#b0d500",
+                "outline": "#8f9378",
+                "surface-container-lowest": "#0e0e0e",
+                "on-tertiary-fixed": "#1a1c1c",
+                "inverse-on-surface": "#313030",
+                "on-tertiary-fixed-variant": "#454747",
+                "on-primary-fixed": "#171e00",
+                "inverse-primary": "#536600",
+                "surface-variant": "#353534",
+                "on-surface-variant": "#c5c9ac",
+                "error-container": "#93000a",
+                "inverse-surface": "#e5e2e1",
+                "surface-container-highest": "#353534",
+                "secondary": "#c8c6c5",
+                "tertiary-container": "#e2e2e2",
+                "tertiary-fixed-dim": "#c6c6c7",
+                "on-error-container": "#ffdad6",
+                "outline-variant": "#444932",
+                "error": "#ffb4ab",
+                "secondary-container": "#474746",
+                "primary-container": "#caf300",
+                "on-tertiary": "#2f3131",
+                "tertiary-fixed": "#e2e2e2",
+                "secondary-fixed": "#e5e2e1",
+                "on-secondary": "#313030",
+                "on-primary-fixed-variant": "#3e4c00",
+                "surface-dim": "#131313",
+                "surface-container-high": "#2a2a2a",
+                "primary-fixed": "#caf300",
+                "background": "#131313",
+                "on-primary": "#2a3400",
+                "on-error": "#690005",
+                "surface-container-low": "#1c1b1b",
+                "on-tertiary-container": "#636565",
+                "surface-container": "#201f1f",
+                "on-secondary-fixed-variant": "#474746",
+                "on-background": "#e5e2e1",
+                "on-secondary-container": "#b7b5b4",
+                "primary": "#ffffff",
+                "on-secondary-fixed": "#1c1b1b",
+                "on-surface": "#e5e2e1"
+            },
+            "borderRadius": {
+                "DEFAULT": "0.125rem",
+                "lg": "0.25rem",
+                "xl": "0.5rem",
+                "full": "0.75rem"
+            },
+            "spacing": {
+                "gutter": "24px",
+                "container-max": "1440px",
+                "md": "24px",
+                "xs": "4px",
+                "base": "8px",
+                "sm": "12px",
+                "xl": "80px",
+                "lg": "48px"
+            },
+            "fontFamily": {
+                "mono-data": ["Geist"],
+                "label-caps": ["Geist"],
+                "headline-md": ["Geist"],
+                "headline-lg-mobile": ["Geist"],
+                "body-lg": ["Geist"],
+                "display": ["Geist"],
+                "headline-lg": ["Geist"],
+                "body-sm": ["Geist"]
+            },
+            "fontSize": {
+                "mono-data": ["13px", {"lineHeight": "1.4", "letterSpacing": "0", "fontWeight": "400"}],
+                "label-caps": ["12px", {"lineHeight": "1", "letterSpacing": "0.1em", "fontWeight": "600"}],
+                "headline-md": ["20px", {"lineHeight": "1.4", "letterSpacing": "-0.01em", "fontWeight": "400"}],
+                "headline-lg-mobile": ["24px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "300"}],
+                "body-lg": ["16px", {"lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400"}],
+                "display": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "200"}],
+                "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "300"}],
+                "body-sm": ["14px", {"lineHeight": "1.5", "letterSpacing": "0", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<link rel="stylesheet" href="https://fonts.cdnfonts.com/css/geist" data-snapdom="injected-import"></head>
+<body class="flex flex-col min-h-screen selection:bg-surface-tint selection:text-black">
+<!-- TopNavBar -->
+<header class="absolute top-0 w-full z-50 flex justify-between items-center px-lg py-md">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-surface-tint font-bold text-[32px]">layers</span>
+<span class="font-display text-headline-md text-white tracking-tighter uppercase font-bold">ITM PANEL ADMIN</span>
+</div>
+<div class="flex items-center gap-md">
+<button class="flex items-center gap-xs font-label-caps text-label-caps text-white hover:text-surface-tint transition-colors">
+<span class="material-symbols-outlined text-[18px]">language</span>
+                FR
+            </button>
+<div class="flex gap-sm">
+<span class="material-symbols-outlined text-white hover:text-surface-tint cursor-pointer transition-colors" data-icon="help">help</span>
+<span class="material-symbols-outlined text-white hover:text-surface-tint cursor-pointer transition-colors" data-icon="dark_mode">dark_mode</span>
+</div>
+</div>
+</header>
+<main class="flex-grow flex flex-col md:flex-row min-h-screen">
+<!-- Section Gauche: Sombre & Branding -->
+<section class="w-full md:w-1/2 relative overflow-hidden flex flex-col justify-center px-lg lg:px-xl py-xl border-r border-white/5 bg-black">
+<!-- STITCH_SHADER_START:ANIMATION_8 class="absolute inset-0 w-full h-full z-0" -->
+<div class="absolute inset-0 w-full h-full z-0" style="display:block;">
+<canvas id="shader-canvas-ANIMATION_8" style="display:block;width:100%;height:100%" width="639" height="1024"></canvas>
+<script>
+(function() {
+  const canvas = document.getElementById('shader-canvas-ANIMATION_8');
+
+  // Sync the WebGL drawing-buffer size with the CSS-driven layout size.
+  // This fires on initial layout and whenever the element is resized.
+  function syncSize() {
+    const w = canvas.clientWidth  || 1280;
+    const h = canvas.clientHeight || 720;
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width  = w;
+      canvas.height = h;
+    }
+  }
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(syncSize).observe(canvas);
+  }
+  syncSize();
+
+  const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+  if (!gl) return;
+  const vs = `attribute vec2 a_position;
+varying vec2 v_texCoord;
+void main() {
+  v_texCoord = a_position * 0.5 + 0.5;
+  gl_Position = vec4(a_position, 0.0, 1.0);
+}`;
+  const fs = `precision highp float;
+
+uniform float u_time;
+uniform vec2 u_resolution;
+uniform vec2 u_mouse;
+
+varying vec2 v_texCoord;
+
+// Simple noise function
+float noise(vec2 p) {
+    return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+float smoothNoise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    
+    float a = noise(i);
+    float b = noise(i + vec2(1.0, 0.0));
+    float c = noise(i + vec2(0.0, 1.0));
+    float d = noise(i + vec2(1.0, 1.0));
+    
+    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+
+void main() {
+    vec2 uv = v_texCoord;
+    vec2 mouse = u_mouse / u_resolution;
+    
+    // Create animated wave pattern
+    float t = u_time * 0.3;
+    
+    // Base colors from Vanguard Noir palette
+    vec3 color1 = vec3(0.075, 0.075, 0.075); // Dark surface #131313
+    vec3 color2 = vec3(0.83, 1.0, 0.0);      // Custom Lime/Lemon #d4ff00
+    vec3 color3 = vec3(0.1, 0.05, 0.15);     // Deep purple for depth
+    
+    // Wave movement
+    float wave = smoothNoise(uv * 3.0 + t + mouse * 0.5);
+    wave += 0.5 * smoothNoise(uv * 6.0 - t * 0.8);
+    wave += 0.25 * smoothNoise(uv * 12.0 + t * 1.2);
+    
+    // Normalize wave
+    wave = wave / 1.75;
+    
+    // Blend colors based on waves
+    vec3 finalColor = mix(color1, color3, wave);
+    
+    // Add subtle glow based on lime color
+    float glow = pow(wave, 4.0);
+    finalColor = mix(finalColor, color2 * 0.3, glow * 0.4);
+    
+    // Vignette
+    float vignette = 1.0 - length(uv - 0.5) * 0.7;
+    finalColor *= vignette;
+
+    gl_FragColor = vec4(finalColor, 1.0);
+}`;
+  function cs(type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    return s;
+  }
+  const prog = gl.createProgram();
+  gl.attachShader(prog, cs(gl.VERTEX_SHADER, vs));
+  gl.attachShader(prog, cs(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(prog);
+  gl.useProgram(prog);
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+  const pos = gl.getAttribLocation(prog, 'a_position');
+  gl.enableVertexAttribArray(pos);
+  gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
+  const uTime = gl.getUniformLocation(prog, 'u_time');
+  const uRes = gl.getUniformLocation(prog, 'u_resolution');
+  const uMouse = gl.getUniformLocation(prog, 'u_mouse');
+
+  // u_mouse is in pixel coordinates matching u_resolution (ShaderToy convention).
+  // Shaders that need normalized coords should use: u_mouse / u_resolution.
+  let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
+  window.addEventListener('mousemove', (event) => {
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width && rect.height) {
+      const nx = (event.clientX - rect.left) / rect.width;
+      const ny = 1.0 - (event.clientY - rect.top) / rect.height;
+      mouse.x = nx * canvas.width;
+      mouse.y = ny * canvas.height;
+    }
+  });
+
+  function render(t) {
+    if (typeof ResizeObserver === 'undefined') syncSize();
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    if (uTime) gl.uniform1f(uTime, t * 0.001);
+    if (uRes) gl.uniform2f(uRes, canvas.width, canvas.height);
+    if (uMouse) gl.uniform2f(uMouse, mouse.x, mouse.y);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    requestAnimationFrame(render);
+  }
+  render(0);
+})();
+</script>
+</div>
+<!-- STITCH_SHADER_END:ANIMATION_8 -->
+<div class="grainy-bg absolute inset-0 z-10 opacity-10"></div>
+<div class="relative z-20 max-w-lg">
+<h1 class="font-display text-display text-white mb-md leading-tight">
+                    Créez du contenu. <br>
+<span class="text-surface-tint font-bold">Fédérez vos audiences.</span>
+</h1>
+<p class="font-body-lg text-secondary mb-lg leading-relaxed">
+                    Le CMS multi-tenant nouvelle génération conçu pour les créateurs exigeants. Centralisez vos actifs, automatisez vos workflows et scalez votre présence digitale sans limites techniques.
+                </p>
+<!-- Features List -->
+<div class="space-y-sm">
+<div class="flex items-start gap-md p-sm glass-card rounded-xl">
+<div class="flex items-center justify-center h-12 w-12 rounded-lg bg-surface-container-high border border-white/10 shrink-0">
+<span class="material-symbols-outlined text-surface-tint" data-icon="bolt">bolt</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-white">Performance éclair</h3>
+<p class="font-body-sm text-on-surface-variant">Architecture optimisée pour un chargement instantané de vos interfaces d'administration.</p>
+</div>
+</div>
+<div class="flex items-start gap-md p-sm glass-card rounded-xl">
+<div class="flex items-center justify-center h-12 w-12 rounded-lg bg-surface-container-high border border-white/10 shrink-0">
+<span class="material-symbols-outlined text-surface-tint" data-icon="insights">insights</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-white">Analytique avancée</h3>
+<p class="font-body-sm text-on-surface-variant">Visualisez l'impact de vos publications en temps réel sur tous vos canaux.</p>
+</div>
+</div>
+<div class="flex items-start gap-md p-sm glass-card rounded-xl">
+<div class="flex items-center justify-center h-12 w-12 rounded-lg bg-surface-container-high border border-white/10 shrink-0">
+<span class="material-symbols-outlined text-surface-tint" data-icon="sync_alt">sync_alt</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-white">Flux multi-tenant</h3>
+<p class="font-body-sm text-on-surface-variant">Gérez des centaines de propriétés digitales depuis une interface unique et sécurisée.</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section Droite: Claire & Connexion -->
+<section class="w-full md:w-1/2 bg-white relative flex flex-col items-center justify-center px-md py-xl overflow-hidden">
+<div class="grid-pattern absolute inset-0"></div>
+<div class="relative z-10 w-full max-w-md">
+<div class="light-glass-card p-lg rounded-full lg:rounded-[2rem]">
+<div class="text-center mb-lg">
+<h2 class="font-headline-lg text-headline-lg text-surface-container-lowest font-bold mb-xs">Bon retour parmi nous</h2>
+<p class="font-body-sm text-secondary-container">Identifiez-vous pour accéder à votre panneau de contrôle.</p>
+</div>
+<form class="space-y-md" onsubmit="event.preventDefault();">
+<div class="space-y-xs">
+<label class="font-label-caps text-label-caps text-surface-container-highest ml-1">ADRESSE E-MAIL</label>
+<input class="w-full bg-white border border-secondary-fixed text-surface-container-lowest font-body-lg px-md py-sm rounded-xl focus:ring-0 focus:border-surface-tint transition-all citron-glow placeholder:text-secondary" placeholder="nom@itmpanel.com" type="email">
+</div>
+<div class="space-y-xs">
+<div class="flex justify-between items-center px-1">
+<label class="font-label-caps text-label-caps text-surface-container-highest">MOT DE PASSE</label>
+<a class="font-label-caps text-[10px] text-surface-tint hover:underline" href="#">OUBLIÉ ?</a>
+</div>
+<input class="w-full bg-white border border-secondary-fixed text-surface-container-lowest font-body-lg px-md py-sm rounded-xl focus:ring-0 focus:border-surface-tint transition-all citron-glow placeholder:text-secondary" placeholder="••••••••" type="password">
+</div>
+<div class="flex items-center gap-xs px-1 py-xs">
+<input class="w-4 h-4 rounded border-secondary-fixed text-surface-container-lowest focus:ring-surface-tint" id="remember" type="checkbox">
+<label class="font-body-sm text-surface-container-highest cursor-pointer" for="remember">Se souvenir de moi</label>
+</div>
+<button class="w-full bg-surface-container-lowest text-white font-headline-md py-md rounded-xl hover:bg-black transform transition-all duration-300 active:scale-[0.98] shadow-xl hover:shadow-2xl">
+                            Se connecter
+                        </button>
+</form>
+<div class="mt-lg text-center border-t border-secondary-fixed pt-md">
+<p class="font-body-sm text-secondary-container">
+                            Pas encore de compte ? 
+                            <a class="text-surface-tint font-bold hover:underline ml-1" href="#">Demander un accès</a>
+</p>
+</div>
+</div>
+
+</div>
+<!-- Bottom Right Gradient Glow -->
+<div class="absolute bottom-0 right-0 w-full h-1/3 bg-gradient-to-t from-surface-tint/5 to-transparent pointer-events-none"></div>
+</section>
+</main>
+<!-- Footer -->
+
+
+
+<div id="snapdom-sandbox" data-snapdom-sandbox="true" aria-hidden="true" style="position: absolute; left: -9999px; top: -9999px; width: 0px; height: 0px; overflow: hidden;"></div></body></html>

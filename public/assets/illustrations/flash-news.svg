@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 360" fill="none" role="img" aria-labelledby="t">
+  <title id="t">Flash actus</title>
+  <rect width="480" height="360" rx="28" fill="#FAFBFC"/>
+  <circle cx="420" cy="32" r="88" fill="#E2F343" fill-opacity="0.16"/>
+  <circle cx="48" cy="328" r="72" fill="#1D141F" fill-opacity="0.06"/>
+
+  <rect x="120" y="80" width="240" height="200" rx="18" fill="#1D141F"/>
+  <path d="M230 110l-40 70h36l-12 50 58-90h-34l32-30H230Z" fill="#E2F343"/>
+  <rect x="160" y="250" width="160" height="10" rx="5" fill="#E8ECEF" opacity="0.25"/>
+</svg>

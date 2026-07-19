@@ -2,9 +2,16 @@ import type { Request, Response } from 'express';
 import {
   getContentById,
   getPublishedContent,
+  trackAcknowledge,
   trackClick,
   trackView,
 } from '../services/content.service';
+import { parseBody } from '../lib/validate';
+import {
+  trackAcknowledgeSchema,
+  trackClickSchema,
+  trackViewSchema,
+} from '../lib/schemas';
 
 export async function listPublicContent(req: Request, res: Response) {
   const site = req.query.site as string | undefined;
@@ -39,13 +46,12 @@ export async function getPublicContentById(req: Request, res: Response) {
 
 export async function trackViewEvent(req: Request, res: Response) {
   try {
-    const contentId = req.body.contentId as string;
-    const siteId = (req.body.siteId || req.body.site) as string | undefined;
+    const body = parseBody(trackViewSchema, req, res);
+    if (!body) return;
 
-    if (!contentId) {
-      res.status(400).json({ error: 'contentId is required' });
-      return;
-    }
+    const contentId = body.contentId;
+    const siteId = body.siteId || body.site;
+
     if (!siteId) {
       res.status(400).json({ error: 'siteId or site is required' });
       return;
@@ -66,14 +72,13 @@ export async function trackViewEvent(req: Request, res: Response) {
 
 export async function trackClickEvent(req: Request, res: Response) {
   try {
-    const contentId = req.body.contentId as string;
-    const siteId = (req.body.siteId || req.body.site) as string | undefined;
-    const linkUrl = req.body.linkUrl as string | undefined;
+    const body = parseBody(trackClickSchema, req, res);
+    if (!body) return;
 
-    if (!contentId) {
-      res.status(400).json({ error: 'contentId is required' });
-      return;
-    }
+    const contentId = body.contentId;
+    const siteId = body.siteId || body.site;
+    const linkUrl = body.linkUrl;
+
     if (!siteId) {
       res.status(400).json({ error: 'siteId or site is required' });
       return;
@@ -94,5 +99,32 @@ export async function trackClickEvent(req: Request, res: Response) {
   } catch (error) {
     console.error('POST /api/track/click', error);
     res.status(500).json({ error: 'Failed to track click' });
+  }
+}
+
+/** Future site/widget connection — records ContentEvent acknowledge. */
+export async function trackAcknowledgeEvent(req: Request, res: Response) {
+  try {
+    const body = parseBody(trackAcknowledgeSchema, req, res);
+    if (!body) return;
+
+    const contentId = body.contentId;
+    const siteId = body.siteId || body.site;
+
+    if (!siteId) {
+      res.status(400).json({ error: 'siteId or site is required' });
+      return;
+    }
+
+    const result = await trackAcknowledge(contentId, siteId);
+    if (!result) {
+      res.status(404).json({ error: 'Content not found' });
+      return;
+    }
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('POST /api/track/acknowledge', error);
+    res.status(500).json({ error: 'Failed to track acknowledge' });
   }
 }

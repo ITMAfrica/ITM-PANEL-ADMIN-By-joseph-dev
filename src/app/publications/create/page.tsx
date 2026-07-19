@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { safeReplace } from '@/lib/safe-navigate';
 import { useAppStore } from '@/lib/store';
 import { LoginPage } from '@/components/login-page';
 import type { PublicationComposerType } from '@/lib/publication-composer';
@@ -44,7 +45,7 @@ function CreatePublicationPageContent() {
     const type = parseType(searchParams.get('type'));
     const params = new URLSearchParams({ tab: 'calendar', create: 'true' });
     if (type) params.set('composerType', type);
-    router.replace(`/editorial-calendar?${params.toString()}`);
+    safeReplace(router, `/editorial-calendar?${params.toString()}`);
   }, [hasHydrated, isAuthenticated, router, searchParams]);
 
   if (!hasHydrated) {

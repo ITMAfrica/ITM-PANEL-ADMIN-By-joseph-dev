@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 360" fill="none" role="img" aria-labelledby="t">
+  <title id="t">Lien brisé</title>
+  <rect width="480" height="360" rx="28" fill="#FAFBFC"/>
+  <circle cx="420" cy="32" r="88" fill="#E2F343" fill-opacity="0.16"/>
+  <circle cx="48" cy="328" r="72" fill="#1D141F" fill-opacity="0.06"/>
+
+  <path d="M160 200c0-40 30-70 70-70h30" stroke="#1D141F" stroke-width="18" stroke-linecap="round" fill="none"/>
+  <path d="M220 230c0 40 30 70 70 70h30" stroke="#1D141F" stroke-width="18" stroke-linecap="round" fill="none"/>
+  <path d="M250 160l40 40" stroke="#E2F343" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="270" cy="180" r="8" fill="#D95800"/>
+</svg>

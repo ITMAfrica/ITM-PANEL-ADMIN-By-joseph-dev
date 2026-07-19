@@ -14,10 +14,12 @@ import { TemplatesView } from '@/components/views/templates-view';
 import { DraftsView } from '@/components/views/drafts-view';
 import { PublishedView } from '@/components/views/published-view';
 import { ArchiveView } from '@/components/views/archive-view';
-import { StatisticsView } from '@/components/views/statistics-view';
 import { UsersView } from '@/components/views/users-view';
 import { RolesView } from '@/components/views/roles-view';
 import { TenantsView } from '@/components/views/tenants-view';
+import { WorkspaceMembersView } from '@/components/views/workspace-members-view';
+import { DocumentationView } from '@/components/views/documentation-view';
+import { ConversationView } from '@/components/views/conversation-view';
 import { AuditView } from '@/components/views/audit-view';
 import { TopBar } from '@/components/top-bar';
 import { NotificationPanel } from '@/components/notification-panel';
@@ -44,6 +46,7 @@ const LEGACY_HUB_PAGE_SET = new Set<string>(Object.keys(LEGACY_COMMUNICATION_RED
 const viewMap: Record<string, React.ComponentType> = {
   dashboard: DashboardView,
   'editorial-calendar': EditorialCalendarView,
+  conversation: ConversationView,
   library: LibraryView,
   media: MediaView,
   templates: TemplatesView,
@@ -51,12 +54,13 @@ const viewMap: Record<string, React.ComponentType> = {
   published: PublishedView,
   archive: ArchiveView,
   automations: AutomationsView,
-  statistics: StatisticsView,
   reports: ReportsView,
   users: UsersView,
   roles: RolesView,
   tenants: TenantsView,
+  'workspace-members': WorkspaceMembersView,
   audit: AuditView,
+  documentation: DocumentationView,
   settings: SettingsView,
 };
 
@@ -179,7 +183,6 @@ function MobileFAB() {
 function LazyOverlays() {
   const notificationPanelOpen = useAppStore((s) => s.notificationPanelOpen);
   const contentDetailOpen = useAppStore((s) => s.contentDetailOpen);
-  const composerOpen = useAppStore((s) => s.publicationComposer.open);
   const shortcutsHelpOpen = useAppStore((s) => s.shortcutsHelpOpen);
   const keyboardShortcutsOpen = useAppStore((s) => s.keyboardShortcutsOpen);
   const createWorkspaceDialogOpen = useAppStore((s) => s.createWorkspaceDialogOpen);
@@ -188,7 +191,8 @@ function LazyOverlays() {
     <>
       {notificationPanelOpen && <NotificationPanel />}
       {contentDetailOpen && <ContentDetailDrawer />}
-      {composerOpen && <CreatePublicationComposerOverlay />}
+      {/* Always mounted so Radix Dialog can release body pointer-events on close */}
+      <CreatePublicationComposerOverlay />
       {createWorkspaceDialogOpen && <CreateWorkspaceDialog />}
       {shortcutsHelpOpen && <ShortcutsDialog />}
       {keyboardShortcutsOpen && <KeyboardShortcutsDialog />}
@@ -231,18 +235,20 @@ export function MainApp() {
       <TopBar />
 
       {/* Body: sidebar (home only) + scrollable content below top bar */}
-      <div className="flex pt-18 min-h-screen">
+      <div className="flex pt-18 min-h-screen overflow-x-hidden">
         {showSidebar && <AppSidebar />}
 
         <div
           className={cn(
-            'flex-1 flex flex-col min-h-[calc(100vh-4.5rem)] transition-all duration-300',
-            showSidebar && (sidebarCollapsed ? 'lg:ml-[68px]' : 'lg:ml-[260px]')
+            'flex flex-col min-h-[calc(100vh-4.5rem)] w-full transition-all duration-300',
+            showSidebar && (sidebarCollapsed
+              ? 'lg:w-[calc(100vw-68px)] lg:ml-[68px]'
+              : 'lg:w-[calc(100vw-260px)] lg:ml-[260px]')
           )}
         >
           <main
             id="main-content-area"
-            className="flex-1 p-4 md:p-6 overflow-auto relative metricool-content-bg"
+            className="flex-1 p-4 md:p-6 overflow-y-auto overflow-x-hidden relative metricool-content-bg"
           >
             <div className="relative z-10">
               <PageTransition pageId={activePage}>

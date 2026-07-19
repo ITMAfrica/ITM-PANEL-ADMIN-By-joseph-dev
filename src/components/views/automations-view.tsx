@@ -323,7 +323,11 @@ export function AutomationsView() {
             </ViewDataTableHeader>
             <ViewDataTableBody>
               {automations.length === 0 ? (
-                <ViewDataTableEmpty colSpan={8} message={t.automations.title} />
+                <ViewDataTableEmpty
+                  colSpan={8}
+                  message={t.automations.title}
+                  series2Id="automation-gears"
+                />
               ) : (
                 automations.map((automation) => (
                   <ViewDataTableRow
@@ -403,7 +407,7 @@ export function AutomationsView() {
           <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {automationTemplates.map((tpl) => (
                 <motion.div key={tpl.id} variants={item}>
-                  <Card className="group hover:shadow-md transition-all duration-300 border-border/60 overflow-hidden">
+                  <Card className="group hover:shadow-md transition-all duration-300 overflow-hidden">
                     <CardContent className="p-3 sm:p-4">
                       <div className="mb-3">
                         <h4 className="text-xs font-semibold">{t.automations[tpl.nameKey]}</h4>
@@ -441,7 +445,7 @@ export function AutomationsView() {
             <Clock className="h-4 w-4 text-[oklch(0.55_0.18_250)]" />
             {t.automations.executionHistory}
           </h3>
-          <Card className="border-border/60 overflow-hidden">
+          <Card className="overflow-hidden">
             <div className="divide-y">
               {executionHistory.map((entry, i) => (
                 <motion.div

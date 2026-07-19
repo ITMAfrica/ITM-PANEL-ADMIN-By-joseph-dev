@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 360" fill="none" role="img" aria-labelledby="t">
+  <title id="t">Hors ligne</title>
+  <rect width="480" height="360" rx="28" fill="#FAFBFC"/>
+  <circle cx="420" cy="32" r="88" fill="#E2F343" fill-opacity="0.16"/>
+  <circle cx="48" cy="328" r="72" fill="#1D141F" fill-opacity="0.06"/>
+
+  <path d="M140 200c55-70 145-70 200 0" stroke="#E8ECEF" stroke-width="12" stroke-linecap="round" fill="none" opacity="0.5"/>
+  <path d="M170 220c35-45 105-45 140 0" stroke="#E8ECEF" stroke-width="12" stroke-linecap="round" fill="none" opacity="0.5"/>
+  <circle cx="240" cy="250" r="16" fill="#1D141F"/>
+  <path d="M200 130l80 80M280 130l-80 80" stroke="#D95800" stroke-width="10" stroke-linecap="round"/>
+</svg>

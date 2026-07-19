@@ -1,8 +1,9 @@
 'use client';
 
 import { useMemo } from 'react';
+import { MoreHorizontal } from 'lucide-react';
 import { contentStatusColors, contentStatusLabels } from '@/lib/ui-constants';
-import { useContent } from '@/hooks/use-content';
+import { useContent, useUpdateContent } from '@/hooks/use-content';
 import { useDistributionChannels } from '@/hooks/use-distribution-channels';
 import { useUserLookup } from '@/hooks/use-user-lookup';
 import { useAppStore } from '@/lib/store';
@@ -11,6 +12,13 @@ import type { ContentItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { ViewTabPanel } from '@/components/view-layout';
 import { CreatePublicationMenu } from '@/components/publication-composer/create-publication-menu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
 import {
   ViewDataTable,
   ViewDataTableHeader,
@@ -22,15 +30,19 @@ import {
   ViewStatusText,
 } from '@/components/view-data-table';
 
-function formatCountdown(targetDate: string): string {
+function formatCountdown(
+  targetDate: string,
+  locale: 'fr' | 'en',
+  nowLabel: string
+): string {
   const now = new Date();
   const target = new Date(targetDate);
   const diff = target.getTime() - now.getTime();
-  if (diff <= 0) return 'Maintenant';
+  if (diff <= 0) return nowLabel;
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
   const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  if (days > 0) return `${days}j ${hours}h`;
+  if (days > 0) return locale === 'fr' ? `${days}j ${hours}h` : `${days}d ${hours}h`;
   if (hours > 0) return `${hours}h ${minutes}m`;
   return `${minutes}m`;
 }
@@ -40,6 +52,13 @@ function getChannelNames(
   channels: { id: string; name: string }[]
 ): string[] {
   return channelIds.map((id) => channels.find((c) => c.id === id)?.name || id);
+}
+
+function getContentChannelIds(content: ContentItem): string[] {
+  return 'channelIds' in content &&
+    Array.isArray((content as { channelIds?: string[] }).channelIds)
+    ? (content as { channelIds: string[] }).channelIds
+    : [];
 }
 
 export function SchedulingQueuePanel() {
@@ -53,6 +72,7 @@ export function SchedulingQueuePanel() {
   });
   const { data: distributionChannels = [] } = useDistributionChannels(activeTenantId);
   const { getUserName } = useUserLookup(activeTenantId);
+  const updateContent = useUpdateContent();
 
   const scheduledContent = useMemo(() => {
     return [...scheduledItems].sort((a, b) => {
@@ -80,6 +100,14 @@ export function SchedulingQueuePanel() {
     setContentDetailOpen(true);
   };
 
+  const cancelSchedule = (content: ContentItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    updateContent.mutate({
+      id: content.id,
+      data: { status: 'draft', scheduledAt: null },
+    });
+  };
+
   return (
     <ViewTabPanel>
       <div className="flex justify-end mb-4">
@@ -92,7 +120,7 @@ export function SchedulingQueuePanel() {
             {t.editorialCalendar.columns.date}
           </ViewDataTableHead>
           <ViewDataTableHead className="hidden md:table-cell">
-            {locale === 'fr' ? 'Délai' : 'Countdown'}
+            {t.scheduling.countdown}
           </ViewDataTableHead>
           <ViewDataTableHead className="hidden lg:table-cell">
             {t.newsletters.author}
@@ -101,19 +129,21 @@ export function SchedulingQueuePanel() {
             {t.editorialCalendar.columns.networks}
           </ViewDataTableHead>
           <ViewDataTableHead>{t.editorialCalendar.columns.status}</ViewDataTableHead>
+          <ViewDataTableHead className="w-12" />
         </ViewDataTableHeader>
         <ViewDataTableBody>
           {scheduledContent.length === 0 ? (
-            <ViewDataTableEmpty colSpan={6} message={t.scheduling.noScheduled} />
+            <ViewDataTableEmpty
+              colSpan={7}
+              message={t.scheduling.noScheduled}
+              illustrationId="schedule-post"
+            />
           ) : (
             scheduledContent.map((content) => {
-              const channelNames =
-                'channelIds' in content
-                  ? getChannelNames(
-                      (content as ContentItem & { channelIds?: string[] }).channelIds || [],
-                      distributionChannels
-                    )
-                  : [];
+              const channelNames = getChannelNames(
+                getContentChannelIds(content),
+                distributionChannels
+              );
               const statusColor =
                 contentStatusColors[content.status] || contentStatusColors.draft;
 
@@ -129,7 +159,9 @@ export function SchedulingQueuePanel() {
                     {content.scheduledAt ? formatScheduledDate(content.scheduledAt) : '—'}
                   </ViewDataTableCell>
                   <ViewDataTableCell className="hidden md:table-cell text-amber-600 text-xs font-medium">
-                    {content.scheduledAt ? formatCountdown(content.scheduledAt) : '—'}
+                    {content.scheduledAt
+                      ? formatCountdown(content.scheduledAt, locale as 'fr' | 'en', t.scheduling.now)
+                      : '—'}
                   </ViewDataTableCell>
                   <ViewDataTableCell className="hidden lg:table-cell text-muted-foreground">
                     {getUserName(content.authorId)}
@@ -142,6 +174,32 @@ export function SchedulingQueuePanel() {
                       label={statusLabel(content.status)}
                       className={cn(statusColor.bg, statusColor.text, statusColor.border)}
                     />
+                  </ViewDataTableCell>
+                  <ViewDataTableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenuItem onClick={() => openContent(content)}>
+                          {t.scheduling.openDetail}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-rose-600"
+                          onClick={(e) => cancelSchedule(content, e)}
+                          disabled={updateContent.isPending}
+                        >
+                          {t.scheduling.cancelSchedule}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </ViewDataTableCell>
                 </ViewDataTableRow>
               );

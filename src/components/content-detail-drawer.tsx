@@ -1,12 +1,15 @@
 ﻿'use client';
 
+import { useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { useAppStore } from '@/lib/store';
-import { useShallow } from 'zustand/react/shallow';
 import { useTranslation } from '@/lib/i18n';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { NewsletterSendsPanel } from '@/components/newsletter-sends-panel';
+import { NewsletterSectionsPreview } from '@/components/publication-composer/newsletter-sections-preview';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Sheet,
@@ -22,7 +25,6 @@ import {
   Newspaper,
   Clock,
   Calendar,
-  User,
   Tag,
   Eye,
   Pencil,
@@ -33,96 +35,110 @@ import {
   CalendarClock,
   Archive,
   Target,
+  Loader2,
+  Layers,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import type { ContentItem, ContentType } from '@/lib/types';
+import type { ContentItem, ContentType, NewsletterSection } from '@/lib/types';
 import { contentStatusColors, contentStatusLabels } from '@/lib/ui-constants';
+import { BRAND_DARK, BRAND_YELLOW, editorialClasses } from '@/lib/editorial-design';
 import { useUserLookup } from '@/hooks/use-user-lookup';
 import { formatContentPreview } from '@/lib/media-insert';
+import type { PublicationComposerType } from '@/lib/publication-composer';
 import {
   useApproveContent,
+  useContentById,
+  useDeleteContent,
   useRejectContent,
   useSubmitContentForReview,
 } from '@/hooks/use-content';
 
-// ─── Content type config ─────────────────────────────────────────────────
-const contentTypeConfig: Record<ContentType, { icon: React.ElementType; label: Record<string, string>; gradient: string; color: string }> = {
+const contentTypeConfig: Record<
+  ContentType,
+  { icon: React.ElementType; label: Record<string, string> }
+> = {
   newsletter: {
     icon: Mail,
     label: { fr: 'Newsletter', en: 'Newsletter' },
-    gradient: 'from-[oklch(0.55_0.18_250)] to-[oklch(0.50_0.15_160)]',
-    color: '[oklch(0.55_0.18_250)]',
   },
   article: {
     icon: FileText,
     label: { fr: 'Article', en: 'Article' },
-    gradient: 'from-emerald-500 to-teal-500',
-    color: 'emerald-500',
   },
   announcement: {
     icon: Megaphone,
     label: { fr: 'Annonce', en: 'Announcement' },
-    gradient: 'from-amber-500 to-orange-500',
-    color: 'amber-500',
   },
   communique: {
     icon: Newspaper,
     label: { fr: 'Communiqué', en: 'Press Release' },
-    gradient: 'from-rose-500 to-pink-500',
-    color: 'rose-500',
   },
   campaign: {
     icon: Target,
     label: { fr: 'Campagne', en: 'Campaign' },
-    gradient: 'from-cyan-500 to-blue-500',
-    color: 'cyan-500',
   },
 };
 
-// ─── Notification type icons ──────────────────────────────────────────────
-function getRelativeTimeFR(timestamp: string): string {
-  const now = new Date();
-  const date = new Date(timestamp);
-  const diffMs = now.getTime() - date.getTime();
-  const diffMinutes = Math.floor(diffMs / (1000 * 60));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffMinutes < 1) return "à l'instant";
-  if (diffMinutes < 60) return `il y a ${diffMinutes}m`;
-  if (diffHours < 24) return `il y a ${diffHours}h`;
-  if (diffDays === 1) return 'Hier';
-  if (diffDays < 7) return `il y a ${diffDays}j`;
-  return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+function parseNewsletterSections(body: string): NewsletterSection[] {
+  try {
+    const parsed = JSON.parse(body) as unknown;
+    return Array.isArray(parsed) ? (parsed as NewsletterSection[]) : [];
+  } catch {
+    return [];
+  }
 }
 
-function getRelativeTimeEN(timestamp: string): string {
-  const now = new Date();
-  const date = new Date(timestamp);
-  const diffMs = now.getTime() - date.getTime();
-  const diffMinutes = Math.floor(diffMs / (1000 * 60));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffMinutes < 1) return 'just now';
-  if (diffMinutes < 60) return `${diffMinutes}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+function MetaCard({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-xl border border-[#E8ECEF] bg-[#F8FAFB] px-3.5 py-3">
+      <div className="mb-1.5 flex items-center gap-1.5">
+        <Icon className="h-3.5 w-3.5 shrink-0 text-[#8B939E]" />
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-[#8B939E]">
+          {label}
+        </span>
+      </div>
+      <p className="text-sm font-medium leading-snug text-[#1D141F]">{value}</p>
+    </div>
+  );
 }
 
-function getRelativeTime(timestamp: string, locale: 'fr' | 'en'): string {
-  return locale === 'fr' ? getRelativeTimeFR(timestamp) : getRelativeTimeEN(timestamp);
+function SectionLabel({
+  icon: Icon,
+  children,
+  trailing,
+}: {
+  icon: React.ElementType;
+  children: React.ReactNode;
+  trailing?: React.ReactNode;
+}) {
+  return (
+    <div className="mb-2.5 flex items-center justify-between gap-2">
+      <div className="flex items-center gap-2">
+        <Icon className="h-3.5 w-3.5 text-[#8B939E]" />
+        <span className="text-[11px] font-bold uppercase tracking-wider text-[#8B939E]">
+          {children}
+        </span>
+      </div>
+      {trailing}
+    </div>
+  );
 }
 
-// ─── Component ────────────────────────────────────────────────────────────
 export function ContentDetailDrawer() {
   const contentDetailOpen = useAppStore((s) => s.contentDetailOpen);
   const setContentDetailOpen = useAppStore((s) => s.setContentDetailOpen);
   const selectedContent = useAppStore((s) => s.selectedContent);
   const setSelectedContent = useAppStore((s) => s.setSelectedContent);
+  const openPublicationComposer = useAppStore((s) => s.openPublicationComposer);
   const locale = useAppStore((s) => s.locale);
   const { t } = useTranslation();
   const activeTenantId = useAppStore((s) => s.activeTenantId);
@@ -130,38 +146,62 @@ export function ContentDetailDrawer() {
   const approveContent = useApproveContent();
   const rejectContent = useRejectContent();
   const submitForReview = useSubmitContentForReview();
+  const deleteContent = useDeleteContent();
 
   const content = selectedContent as ContentItem | null;
+  const contentId = content?.id;
 
-  // Derived data from the content item
+  const {
+    data: detail,
+    isLoading: isLoadingDetail,
+  } = useContentById(contentId, contentDetailOpen && !!contentId);
+
   const contentType = content?.type || 'article';
   const typeConfig = contentTypeConfig[contentType] || contentTypeConfig.article;
   const TypeIcon = typeConfig.icon;
 
   const statusColor = content ? contentStatusColors[content.status] : null;
-  const statusLabel = content ? (contentStatusLabels[locale]?.[content.status] || content.status) : '';
+  const statusLabel = content
+    ? contentStatusLabels[locale]?.[content.status] || content.status
+    : '';
   const authorName = content ? getUserName(content.authorId) : '';
   const authorInitials = content ? getUserInitials(content.authorId) : '';
 
-  const preview = content ? formatContentPreview(content.excerpt) : { text: '', imageUrl: null };
+  const newsletterSections = useMemo(() => {
+    if (contentType !== 'newsletter' || !detail?.body) return [];
+    return parseNewsletterSections(detail.body);
+  }, [contentType, detail?.body]);
 
-  const wordCount = preview.text
-    ? preview.text.split(/\s+/).filter(Boolean).length
-    : 0;
+  const emailSubject =
+    contentType === 'newsletter' && detail?.metadata
+      ? String(detail.metadata.emailSubject ?? '')
+      : contentType === 'newsletter' && 'subject' in (content ?? {})
+        ? String((content as { subject?: string }).subject ?? '')
+        : '';
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', {
+  const preview = useMemo(() => {
+    if (contentType === 'newsletter') {
+      return { text: '', imageUrl: null as string | null };
+    }
+    const source = detail?.body || content?.excerpt || '';
+    return formatContentPreview(source);
+  }, [contentType, detail?.body, content?.excerpt]);
+
+  const wordCount =
+    contentType !== 'newsletter' && preview.text
+      ? preview.text.split(/\s+/).filter(Boolean).length
+      : 0;
+
+  const formatDate = (dateStr: string) =>
+    new Date(dateStr).toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', {
       day: 'numeric',
       month: 'long',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
     });
-  };
 
-  const handleWorkflowAction = async (
-    action: 'submitReview' | 'approve' | 'reject'
-  ) => {
+  const handleWorkflowAction = async (action: 'submitReview' | 'approve' | 'reject') => {
     if (!content) return;
 
     try {
@@ -186,9 +226,166 @@ export function ContentDetailDrawer() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!content) return;
+
+    const confirmed = window.confirm(
+      locale === 'fr'
+        ? `Supprimer « ${content.title} » ? Cette action est irréversible.`
+        : `Delete "${content.title}"? This action cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    try {
+      await deleteContent.mutateAsync(content.id);
+      setContentDetailOpen(false);
+      setTimeout(() => setSelectedContent(null), 300);
+      toast.success(t.contentDetail.contentDeleted);
+    } catch {
+      toast.error(
+        locale === 'fr'
+          ? 'Échec de la suppression du contenu'
+          : 'Failed to delete content'
+      );
+    }
+  };
+
+  const handleEdit = () => {
+    if (!content) return;
+
+    if (content.type === 'campaign') {
+      toast.error(t.publicationComposer.editNotSupported);
+      return;
+    }
+
+    const composerType = content.type as PublicationComposerType;
+    setContentDetailOpen(false);
+    setTimeout(() => setSelectedContent(null), 300);
+    openPublicationComposer({
+      type: composerType,
+      editContentId: content.id,
+      scheduledAt: content.scheduledAt ? new Date(content.scheduledAt) : undefined,
+    });
+  };
+
   const handleAction = (action: string) => {
     toast.success(action);
   };
+
+  const detailBody = content ? (
+    <ScrollArea className="flex-1 px-5">
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25 }}
+        className="space-y-5 pb-5 pt-1"
+      >
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          <MetaCard
+            icon={Calendar}
+            label={t.contentDetail.createdAt}
+            value={formatDate(content.createdAt)}
+          />
+          <MetaCard
+            icon={Clock}
+            label={t.contentDetail.modifiedAt}
+            value={formatDate(content.updatedAt)}
+          />
+          {content.status === 'scheduled' && content.scheduledAt && (
+            <MetaCard
+              icon={CalendarClock}
+              label={t.contentDetail.scheduledAt}
+              value={formatDate(content.scheduledAt)}
+            />
+          )}
+          {emailSubject ? (
+            <MetaCard icon={Mail} label={t.contentDetail.emailSubject} value={emailSubject} />
+          ) : null}
+        </div>
+
+        {content.tags && content.tags.length > 0 && (
+          <div>
+            <SectionLabel icon={Tag}>{t.contentDetail.tags}</SectionLabel>
+            <div className="flex flex-wrap gap-1.5">
+              {content.tags.map((tag) => (
+                <Badge
+                  key={tag}
+                  variant="secondary"
+                  className="rounded-lg border border-[#E8ECEF] bg-white px-2.5 py-0.5 text-xs font-medium text-[#5C6470]"
+                >
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div>
+          <SectionLabel
+            icon={contentType === 'newsletter' ? Layers : Eye}
+            trailing={
+              contentType === 'newsletter' && newsletterSections.length > 0 ? (
+                <span className="rounded-full bg-[#1D141F] px-2 py-0.5 text-[10px] font-semibold text-[#E2F343]">
+                  {t.contentDetail.sectionsCount.replace(
+                    '{count}',
+                    String(newsletterSections.length)
+                  )}
+                </span>
+              ) : wordCount > 0 ? (
+                <span className="rounded-full border border-[#E8ECEF] bg-[#F5F7F9] px-2 py-0.5 text-[10px] font-medium text-[#8B939E]">
+                  {wordCount} {t.contentDetail.wordCount}
+                </span>
+              ) : null
+            }
+          >
+            {t.contentDetail.preview}
+          </SectionLabel>
+
+          {contentType === 'newsletter' ? (
+            isLoadingDetail ? (
+              <div className="flex min-h-[140px] items-center justify-center gap-2 rounded-xl border border-[#E8ECEF] bg-[#F8FAFB] text-sm text-[#8B939E]">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {t.contentDetail.loadingPreview}
+              </div>
+            ) : (
+              <div className="overflow-hidden rounded-xl border border-[#E8ECEF] bg-white shadow-sm">
+                <NewsletterSectionsPreview sections={newsletterSections} />
+              </div>
+            )
+          ) : (
+            <div className="space-y-3 rounded-xl border border-[#E8ECEF] bg-[#F8FAFB] p-4">
+              {isLoadingDetail && !preview.text && !preview.imageUrl ? (
+                <div className="flex items-center justify-center gap-2 py-8 text-sm text-[#8B939E]">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {t.contentDetail.loadingPreview}
+                </div>
+              ) : preview.text ? (
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-[#1D141F]/90">
+                  {preview.text.length > 600
+                    ? `${preview.text.slice(0, 600).trim()}…`
+                    : preview.text}
+                </p>
+              ) : !preview.imageUrl ? (
+                <p className="py-6 text-center text-sm italic text-[#8B939E]">
+                  {t.contentDetail.noPreview}
+                </p>
+              ) : null}
+              {preview.imageUrl ? (
+                <div className="overflow-hidden rounded-lg border border-[#E8ECEF]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={preview.imageUrl}
+                    alt=""
+                    className="max-h-56 w-full object-cover"
+                  />
+                </div>
+              ) : null}
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </ScrollArea>
+  ) : null;
 
   return (
     <Sheet
@@ -196,204 +393,113 @@ export function ContentDetailDrawer() {
       onOpenChange={(open) => {
         setContentDetailOpen(open);
         if (!open) {
-          // Delay clearing content to allow close animation
           setTimeout(() => setSelectedContent(null), 300);
         }
       }}
     >
       <SheetContent
         side="right"
-        className="w-full sm:max-w-lg p-0 gap-0 overflow-hidden"
+        className="w-full gap-0 overflow-hidden border-l border-[#E8ECEF] bg-white p-0 sm:max-w-lg"
       >
         {content ? (
           <>
-            {/* Gradient top border */}
-            <div className={cn('h-1.5 bg-gradient-to-r', typeConfig.gradient)} />
-
-            {/* Header */}
-            <SheetHeader className="p-5 pb-3 space-y-3">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className={cn(
-                    'p-2 rounded-xl border',
-                    contentType === 'newsletter' && 'bg-[oklch(0.55_0.18_250/0.1)] border-[oklch(0.55_0.18_250/0.2)]',
-                    contentType === 'article' && 'bg-emerald-500/10 border-emerald-500/20',
-                    contentType === 'announcement' && 'bg-amber-500/10 border-amber-500/20',
-                    contentType === 'communique' && 'bg-rose-500/10 border-rose-500/20',
-                    contentType === 'campaign' && 'bg-cyan-500/10 border-cyan-500/20',
-                  )}>
-                    <TypeIcon className={cn(
-                      'h-4 w-4',
-                      contentType === 'newsletter' && 'text-[oklch(0.55_0.18_250)]',
-                      contentType === 'article' && 'text-emerald-600',
-                      contentType === 'announcement' && 'text-amber-600',
-                      contentType === 'communique' && 'text-rose-600',
-                      contentType === 'campaign' && 'text-cyan-600',
-                    )} />
+            <SheetHeader className="space-y-0 border-b border-[#E8ECEF] bg-gradient-to-b from-[#F8FAFB] to-white p-0">
+              <div className="flex items-start gap-3 px-5 pb-5 pt-6 pr-12">
+                <div className={cn(editorialClasses.iconBox, 'mt-0.5')}>
+                  <TypeIcon className={cn('h-5 w-5', editorialClasses.iconColor)} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#8B939E]">
+                      {typeConfig.label[locale] || typeConfig.label.fr}
+                    </span>
+                    {statusColor && (
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-semibold',
+                          statusColor.bg,
+                          statusColor.text,
+                          statusColor.border
+                        )}
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                        {statusLabel}
+                      </span>
+                    )}
                   </div>
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      'text-xs px-2 py-0.5 gap-1 font-medium',
-                      contentType === 'newsletter' && 'bg-[oklch(0.55_0.18_250/0.08)] text-[oklch(0.55_0.18_250)] border-[oklch(0.55_0.18_250/0.2)]',
-                      contentType === 'article' && 'bg-emerald-500/8 text-emerald-600 border-emerald-500/20',
-                      contentType === 'announcement' && 'bg-amber-500/8 text-amber-600 border-amber-500/20',
-                      contentType === 'communique' && 'bg-rose-500/8 text-rose-600 border-rose-500/20',
-                      contentType === 'campaign' && 'bg-cyan-500/8 text-cyan-600 border-cyan-500/20',
-                    )}
-                  >
-                    {typeConfig.label[locale] || typeConfig.label.fr}
-                  </Badge>
+
+                  <SheetTitle className="text-left text-xl font-bold leading-snug tracking-tight text-[#1D141F]">
+                    {content.title}
+                  </SheetTitle>
+
+                  <div className="mt-3.5 flex items-center gap-2.5">
+                    <Avatar className="h-8 w-8 border border-[#E8ECEF] shadow-sm">
+                      <AvatarFallback className="bg-[#1D141F] text-[0.65rem] font-semibold text-[#E2F343]">
+                        {authorInitials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-[#1D141F]">{authorName}</p>
+                      <p className="text-xs text-[#8B939E]">{t.contentDetail.author}</p>
+                    </div>
+                  </div>
                 </div>
-                {/* Close button is handled by Sheet */}
               </div>
-
-              <SheetTitle className="text-lg font-bold tracking-tight text-left">
-                {content.title}
-              </SheetTitle>
-
-              {statusColor && (
-                <div className="flex items-center gap-2">
-                  <Badge
-                    className={cn(
-                      'text-xs px-2.5 py-1 gap-1.5 font-medium border',
-                      statusColor.bg,
-                      statusColor.text,
-                      statusColor.border
-                    )}
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                    {statusLabel}
-                  </Badge>
-                </div>
-              )}
             </SheetHeader>
 
             <SheetDescription className="sr-only">
               {t.contentDetail.title} - {content.title}
             </SheetDescription>
 
-            {/* Scrollable content */}
-            <ScrollArea className="flex-1 px-5">
-              <div className="space-y-5 pb-4">
-                {/* ─── Metadata section ─────────────────────────────── */}
-                <div className="space-y-3">
-                  {/* Author */}
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-muted/50">
-                      <User className="h-3.5 w-3.5 text-muted-foreground" />
-                    </div>
-                    <div className="flex items-center gap-2 flex-1">
-                      <Avatar className="h-6 w-6">
-                        <AvatarFallback className="text-xs bg-[oklch(0.55_0.18_250/0.1)] text-[oklch(0.55_0.18_250)] font-medium">
-                          {authorInitials}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm text-foreground">{authorName}</span>
-                    </div>
-                    <span className="text-xs text-muted-foreground/60 uppercase tracking-wider font-medium">{t.contentDetail.author}</span>
-                  </div>
-
-                  {/* Created date */}
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-muted/50">
-                      <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                    </div>
-                    <span className="text-sm text-muted-foreground flex-1">{formatDate(content.createdAt)}</span>
-                    <span className="text-xs text-muted-foreground/60 uppercase tracking-wider font-medium">{t.contentDetail.createdAt}</span>
-                  </div>
-
-                  {/* Modified date */}
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-muted/50">
-                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                    </div>
-                    <span className="text-sm text-muted-foreground flex-1">{formatDate(content.updatedAt)}</span>
-                    <span className="text-xs text-muted-foreground/60 uppercase tracking-wider font-medium">{t.contentDetail.modifiedAt}</span>
-                  </div>
-
-                  {/* Scheduled date (if status === 'scheduled') */}
-                  {content.status === 'scheduled' && content.scheduledAt && (
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-violet-500/10">
-                        <CalendarClock className="h-3.5 w-3.5 text-violet-500" />
-                      </div>
-                      <span className="text-sm text-violet-600 font-medium flex-1">{formatDate(content.scheduledAt)}</span>
-                      <span className="text-xs text-violet-500/60 uppercase tracking-wider font-medium">{t.contentDetail.scheduledAt}</span>
-                    </div>
-                  )}
+            {content.type === 'newsletter' ? (
+              <Tabs defaultValue="details" className="flex min-h-0 flex-1 flex-col">
+                <div className="border-b border-[#E8ECEF] px-5 pt-3">
+                  <TabsList className="h-auto w-full justify-start gap-1 rounded-none bg-transparent p-0">
+                    <TabsTrigger
+                      value="details"
+                      className={cn(
+                        'relative rounded-none border-b-2 border-transparent px-3 pb-2.5 pt-1 text-sm shadow-none',
+                        'data-[state=active]:border-[#1D141F] data-[state=active]:bg-transparent data-[state=active]:font-bold data-[state=active]:text-[#1D141F]',
+                        'data-[state=inactive]:font-normal data-[state=inactive]:text-[#8B939E]'
+                      )}
+                    >
+                      {t.newsletterSends.details}
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="openings"
+                      className={cn(
+                        'relative rounded-none border-b-2 border-transparent px-3 pb-2.5 pt-1 text-sm shadow-none',
+                        'data-[state=active]:border-[#1D141F] data-[state=active]:bg-transparent data-[state=active]:font-bold data-[state=active]:text-[#1D141F]',
+                        'data-[state=inactive]:font-normal data-[state=inactive]:text-[#8B939E]'
+                      )}
+                    >
+                      {t.newsletterSends.openings}
+                    </TabsTrigger>
+                  </TabsList>
                 </div>
+                <TabsContent
+                  value="details"
+                  className="mt-0 flex min-h-0 flex-col data-[state=inactive]:hidden"
+                >
+                  {detailBody}
+                </TabsContent>
+                <TabsContent
+                  value="openings"
+                  className="mt-0 flex min-h-0 flex-col data-[state=inactive]:hidden"
+                >
+                  <NewsletterSendsPanel contentId={content.id} />
+                </TabsContent>
+              </Tabs>
+            ) : (
+              detailBody
+            )}
 
-                {/* ─── Tags ─────────────────────────────────────────── */}
-                {content.tags && content.tags.length > 0 && (
-                  <>
-                    <Separator />
-                    <div>
-                      <div className="flex items-center gap-2 mb-2.5">
-                        <Tag className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t.contentDetail.tags}</span>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {content.tags.map((tag) => (
-                          <Badge
-                            key={tag}
-                            variant="secondary"
-                            className="text-xs px-2.5 py-0.5 bg-muted/50 hover:bg-muted text-muted-foreground font-medium"
-                          >
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* ─── Content Preview ──────────────────────────────── */}
-                <Separator />
-                <div>
-                  <div className="flex items-center justify-between mb-2.5">
-                    <div className="flex items-center gap-2">
-                      <Eye className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t.contentDetail.preview}</span>
-                    </div>
-                    {wordCount > 0 && (
-                      <span className="text-xs text-muted-foreground/50 font-medium">
-                        {wordCount} {t.contentDetail.wordCount}
-                      </span>
-                    )}
-                  </div>
-                  <div className="rounded-xl border bg-muted/20 p-4 space-y-3">
-                    {preview.text ? (
-                      <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">
-                        {preview.text}
-                      </p>
-                    ) : !preview.imageUrl ? (
-                      <p className="text-sm text-muted-foreground italic">
-                        {locale === 'fr' ? 'Aucun aperçu disponible' : 'No preview available'}
-                      </p>
-                    ) : null}
-                    {preview.imageUrl ? (
-                      <div className="overflow-hidden rounded-lg border border-border/40">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={preview.imageUrl}
-                          alt=""
-                          className="max-h-48 w-full object-cover"
-                        />
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-            </ScrollArea>
-
-            {/* ─── Workflow Actions (sticky bottom) ──────────────────── */}
-            <div className="border-t bg-background/95 backdrop-blur-sm p-4 space-y-2">
-              {/* Workflow-specific actions */}
+            <div className="space-y-2 border-t border-[#E8ECEF] bg-white/95 p-4 backdrop-blur-sm">
               <div className="flex gap-2">
                 {content.status === 'draft' && (
                   <Button
-                    className="flex-1 gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-sm"
+                    className="h-9 flex-1 gap-1.5 rounded-lg font-semibold text-white shadow-sm hover:opacity-90"
+                    style={{ backgroundColor: '#D97706' }}
                     size="sm"
                     onClick={() => handleWorkflowAction('submitReview')}
                   >
@@ -404,7 +510,7 @@ export function ContentDetailDrawer() {
                 {content.status === 'review' && (
                   <>
                     <Button
-                      className="flex-1 gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-sm"
+                      className="h-9 flex-1 gap-1.5 rounded-lg bg-emerald-600 font-semibold text-white shadow-sm hover:bg-emerald-700"
                       size="sm"
                       onClick={() => handleWorkflowAction('approve')}
                     >
@@ -413,7 +519,7 @@ export function ContentDetailDrawer() {
                     </Button>
                     <Button
                       variant="outline"
-                      className="flex-1 gap-1.5 border-rose-500/30 text-rose-600 hover:bg-rose-500/10 hover:text-rose-600"
+                      className="h-9 flex-1 gap-1.5 rounded-lg border-rose-500/30 text-rose-600 hover:bg-rose-500/10 hover:text-rose-600"
                       size="sm"
                       onClick={() => handleWorkflowAction('reject')}
                     >
@@ -424,7 +530,8 @@ export function ContentDetailDrawer() {
                 )}
                 {content.status === 'approved' && (
                   <Button
-                    className="flex-1 gap-1.5 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white shadow-sm"
+                    className="h-9 flex-1 gap-1.5 rounded-lg font-semibold shadow-sm hover:opacity-90"
+                    style={{ backgroundColor: BRAND_DARK, color: BRAND_YELLOW }}
                     size="sm"
                     onClick={() => handleAction(t.contentDetail.schedule)}
                   >
@@ -435,7 +542,7 @@ export function ContentDetailDrawer() {
                 {content.status === 'published' && (
                   <Button
                     variant="outline"
-                    className="flex-1 gap-1.5 border-slate-500/30 text-slate-600 hover:bg-slate-500/10"
+                    className="h-9 flex-1 gap-1.5 rounded-lg border-[#E8ECEF] text-[#5C6470] hover:bg-[#F8FAFB]"
                     size="sm"
                     onClick={() => handleAction(t.contentDetail.archive)}
                   >
@@ -445,26 +552,22 @@ export function ContentDetailDrawer() {
                 )}
               </div>
 
-              {/* Edit + Delete always visible */}
               <div className="flex gap-2">
                 <Button
-                  variant="outline"
-                  className="flex-1 gap-1.5"
+                  className="h-9 flex-1 gap-1.5 rounded-lg font-semibold shadow-sm hover:opacity-90"
+                  style={{ backgroundColor: BRAND_DARK, color: BRAND_YELLOW }}
                   size="sm"
-                  onClick={() => handleAction(t.contentDetail.edit)}
+                  onClick={handleEdit}
                 >
                   <Pencil className="h-3.5 w-3.5" />
                   {t.contentDetail.edit}
                 </Button>
                 <Button
                   variant="outline"
-                  className="gap-1.5 border-rose-500/30 text-rose-600 hover:bg-rose-500/10 hover:text-rose-600 hover:border-rose-500/50"
+                  className="h-9 gap-1.5 rounded-lg border-rose-500/30 text-rose-600 hover:border-rose-500/50 hover:bg-rose-500/10 hover:text-rose-600"
                   size="sm"
-                  onClick={() => {
-                    setContentDetailOpen(false);
-                    setTimeout(() => setSelectedContent(null), 300);
-                    toast.success(locale === 'fr' ? 'Contenu supprimé' : 'Content deleted');
-                  }}
+                  disabled={deleteContent.isPending}
+                  onClick={handleDelete}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                   {t.contentDetail.delete}
@@ -473,12 +576,11 @@ export function ContentDetailDrawer() {
             </div>
           </>
         ) : (
-          /* Empty state when no content selected */
-          <div className="flex flex-col items-center justify-center h-full gap-4 p-8">
-            <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center">
-              <FileText className="h-8 w-8 text-muted-foreground/40" />
+          <div className="flex h-full flex-col items-center justify-center gap-4 p-8">
+            <div className={editorialClasses.iconBox}>
+              <FileText className={cn('h-5 w-5', editorialClasses.iconColor)} />
             </div>
-            <p className="text-sm text-muted-foreground text-center">{t.contentDetail.noContent}</p>
+            <p className="text-center text-sm text-[#8B939E]">{t.contentDetail.noContent}</p>
           </div>
         )}
       </SheetContent>

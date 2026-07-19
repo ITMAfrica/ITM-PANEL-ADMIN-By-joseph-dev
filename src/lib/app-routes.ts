@@ -8,6 +8,7 @@ export const ROUTABLE_PAGES: readonly PageId[] = [
   'announcements',
   'campaigns',
   'editorial-calendar',
+  'conversation',
   'library',
   'media',
   'templates',
@@ -17,13 +18,14 @@ export const ROUTABLE_PAGES: readonly PageId[] = [
   'scheduling',
   'channels',
   'automations',
-  'statistics',
   'reports',
   'users',
   'roles',
   'tenants',
+  'workspace-members',
   'audit',
   'settings',
+  'documentation',
 ] as const;
 
 const ROUTABLE_PAGE_SET = new Set<string>(ROUTABLE_PAGES);

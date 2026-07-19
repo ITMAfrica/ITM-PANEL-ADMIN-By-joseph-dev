@@ -51,7 +51,7 @@ export async function create(req: Request, res: Response) {
         data: {
           userId: req.user.id,
           workspaceId: workspace.id,
-          role: 'admin',
+          role: 'tenant_admin',
         },
       });
     }

@@ -1,5 +1,6 @@
 import type { ContentPriority, ContentStatus, ContentType, Prisma } from '@prisma/client';
 import { db } from '../lib/prisma';
+import { CONTENT_EVENT_TYPES } from '../lib/analytics-events';
 import { parseMetadata, parseTags } from './mappers/json';
 
 export interface PublicContentItem {
@@ -18,11 +19,23 @@ export interface PublicContentItem {
   metadata: Record<string, unknown>;
 }
 
+function deriveExcerpt(body: string): string {
+  return body
+    .replace(/!\[[^\]]*]\([^)]+\)/g, '')
+    .replace(/\[[^\]]+]\([^)]+\)/g, '$1')
+    .replace(/[#*_>]/g, '')
+    .replace(/\n{2,}/g, '\n')
+    .trim()
+    .split('\n')
+    .slice(0, 2)
+    .join(' ')
+    .slice(0, 200);
+}
+
 function toPublicContent(content: {
   id: string;
   type: string;
   title: string;
-  excerpt: string;
   body: string;
   tenantId: string;
   tags: unknown;
@@ -33,16 +46,20 @@ function toPublicContent(content: {
 }): PublicContentItem {
   const meta = parseMetadata(content.metadata);
   const openRate = typeof meta.openRate === 'number' ? meta.openRate : 0;
-  const clickRate =
+  const siteClickRate =
     content.viewCount > 0
       ? Math.round((content.clickCount / content.viewCount) * 1000) / 10
       : 0;
+  const clickRate =
+    content.type === 'newsletter' && typeof meta.clickRate === 'number'
+      ? meta.clickRate
+      : siteClickRate;
 
   return {
     id: content.id,
     type: content.type,
     title: content.title,
-    excerpt: content.excerpt,
+    excerpt: deriveExcerpt(content.body),
     body: content.body,
     tenantId: content.tenantId,
     tags: parseTags(content.tags),
@@ -164,6 +181,30 @@ export async function trackClick(contentId: string, siteSlug: string, linkUrl?: 
   return toPublicContent(updated);
 }
 
+/**
+ * Records an acknowledgment event for announcements (and compatible content).
+ * Ready for site/widget wiring — creates ContentEvent only (no metadata mutation yet).
+ */
+export async function trackAcknowledge(contentId: string, siteSlug: string) {
+  const site = await db.site.findUnique({ where: { slug: siteSlug } });
+  if (!site) return null;
+
+  const content = await db.content.findFirst({
+    where: { id: contentId, siteId: site.id, status: 'published' },
+  });
+  if (!content) return null;
+
+  await db.contentEvent.create({
+    data: {
+      contentId,
+      siteSlug,
+      eventType: CONTENT_EVENT_TYPES.acknowledge,
+    },
+  });
+
+  return toPublicContent(content);
+}
+
 export async function getStatsByTenant(tenantId: string) {
   const contents = await db.content.findMany({
     where: { tenantId },
@@ -179,8 +220,19 @@ export async function getStatsByTenant(tenantId: string) {
   const published = contents.filter((c) => c.status === 'published');
   const totalViews = published.reduce((sum, c) => sum + c.viewCount, 0);
   const totalClicks = published.reduce((sum, c) => sum + c.clickCount, 0);
-  const avgClickRate =
+
+  const newsletterClickRates = published
+    .filter((c) => c.type === 'newsletter')
+    .map((c) => parseMetadata(c.metadata).clickRate)
+    .filter((r): r is number => typeof r === 'number' && r > 0);
+  const siteClickRate =
     totalViews > 0 ? Math.round((totalClicks / totalViews) * 1000) / 10 : 0;
+  const avgClickRate =
+    newsletterClickRates.length > 0
+      ? Math.round(
+          (newsletterClickRates.reduce((a, b) => a + b, 0) / newsletterClickRates.length) * 10
+        ) / 10
+      : siteClickRate;
 
   const openRates = published
     .filter((c) => c.type === 'newsletter')
@@ -231,10 +283,10 @@ export async function listContent(filters: ListContentFilters) {
       ...(type ? { type: type as ContentType } : {}),
       ...(status ? { status: status as ContentStatus } : {}),
       ...(search
-        ? {
+        ?           {
             OR: [
               { title: { contains: search, mode: 'insensitive' as const } },
-              { excerpt: { contains: search, mode: 'insensitive' as const } },
+              { body: { contains: search, mode: 'insensitive' as const } },
             ],
           }
         : {}),
@@ -248,7 +300,6 @@ export interface CreateContentInput {
   id?: string;
   type: string;
   title: string;
-  excerpt?: string;
   body?: string;
   tenantId: string;
   siteId: string;
@@ -270,7 +321,6 @@ export async function createContent(input: CreateContentInput) {
       id,
       type: input.type as ContentType,
       title: input.title,
-      excerpt: input.excerpt ?? '',
       body: input.body ?? '',
       tenantId: input.tenantId,
       siteId: input.siteId,
@@ -288,7 +338,6 @@ export async function createContent(input: CreateContentInput) {
 
 export interface UpdateContentInput {
   title?: string;
-  excerpt?: string;
   body?: string;
   status?: string;
   priority?: string;
@@ -304,7 +353,6 @@ export async function updateContent(id: string, input: UpdateContentInput) {
 
   const data: Prisma.ContentUpdateInput = {};
   if (input.title !== undefined) data.title = input.title;
-  if (input.excerpt !== undefined) data.excerpt = input.excerpt;
   if (input.body !== undefined) data.body = input.body;
   if (input.status !== undefined) data.status = input.status as ContentStatus;
   if (input.priority !== undefined) data.priority = input.priority as ContentPriority;

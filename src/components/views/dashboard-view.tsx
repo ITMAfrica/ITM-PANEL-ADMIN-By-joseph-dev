@@ -1,5 +1,6 @@
 ﻿'use client';
 
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -8,8 +9,20 @@ import { useUserLookup } from '@/hooks/use-user-lookup';
 import { useTranslation } from '@/lib/i18n';
 import { useAppStore } from '@/lib/store';
 import { motion } from 'framer-motion';
-import { ViewShell, ViewTabPanel } from '@/components/view-layout';
-import { DashboardMetricsGrid } from '@/components/dashboard-metrics-grid';
+import {
+  ViewShell,
+  ViewTabPanel,
+} from '@/components/view-layout';
+import { AllResourceAnalyticsPanels } from '@/components/resource-analytics';
+import { ReportsAnalyticsPanels } from '@/components/reports-analytics-panels';
+import { UpgradePlanBanner } from '@/components/upgrade-plan-banner';
+import { EmptyStateIllustration } from '@/components/empty-state-illustration';
+import {
+  PeriodRangePicker,
+  type AnalyticsPeriod,
+  type PeriodSelection,
+} from '@/components/period-range-picker';
+import { endOfDay, startOfDay, subDays } from 'date-fns';
 
 const EMPTY_APPROVAL: {
   id: string;
@@ -18,6 +31,14 @@ const EMPTY_APPROVAL: {
   authorId: string;
   updatedAt: string;
 }[] = [];
+
+function defaultRange(period: AnalyticsPeriod): { from: Date; to: Date } {
+  const to = endOfDay(new Date());
+  if (period === '7d') return { from: startOfDay(subDays(to, 6)), to };
+  if (period === '90d') return { from: startOfDay(subDays(to, 89)), to };
+  if (period === '1y') return { from: startOfDay(subDays(to, 364)), to };
+  return { from: startOfDay(subDays(to, 29)), to };
+}
 
 function getRelativeTime(dateStr: string, locale: string): string {
   const now = new Date();
@@ -47,75 +68,86 @@ export function DashboardView() {
   const { data: summary } = useDashboardSummary(activeTenantId);
   const approvalItems = summary?.approvalQueue ?? EMPTY_APPROVAL;
   const { getUserName, getUserInitials } = useUserLookup(activeTenantId);
+  const [period, setPeriod] = useState<AnalyticsPeriod>('30d');
+  const [range, setRange] = useState(() => defaultRange('30d'));
+
+  const handlePeriodChange = (selection: PeriodSelection) => {
+    setPeriod(selection.period);
+    setRange({ from: selection.from, to: selection.to });
+  };
 
   return (
     <ViewShell>
-      <ViewTabPanel>
+      <UpgradePlanBanner variant="dashboard" />
+      <PeriodRangePicker value={period} onChange={handlePeriodChange} />
+      <ViewTabPanel className="space-y-8">
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="space-y-5"
         >
-          <DashboardMetricsGrid />
-
-          {approvalItems.length > 0 && (
-            <Card className="overflow-hidden dark-card-glow border">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-sm font-semibold">
-                      {t.dashboard.approvalQueue}
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      {t.dashboard.approvalQueueDesc}
-                    </p>
-                  </div>
-                  <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-xs">
-                    {approvalItems.length}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="px-4 pb-4">
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {approvalItems.map((contentItem) => (
-                      <div
-                        key={contentItem.id}
-                        className="flex items-center gap-3 p-2.5 rounded-xl bg-muted/20"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{contentItem.title}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Avatar className="h-4 w-4">
-                              <AvatarFallback className="text-xs bg-muted">
-                                {getUserInitials(contentItem.authorId)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="text-sm text-muted-foreground">
-                              {getUserName(contentItem.authorId)}
-                            </span>
-                            <span className="text-sm text-muted-foreground/60">·</span>
-                            <span className="text-sm text-muted-foreground/60">
-                              {getRelativeTime(contentItem.updatedAt, locale)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {approvalItems.length === 0 && (
-            <Card className="overflow-hidden dark-card-glow border">
-              <CardContent className="flex flex-col items-center justify-center py-8 gap-2">
-                <p className="text-sm font-medium text-foreground">{t.dashboard.allClear}</p>
-                <p className="text-xs text-muted-foreground">{t.dashboard.allClearDesc}</p>
-              </CardContent>
-            </Card>
-          )}
+          <AllResourceAnalyticsPanels rangeFrom={range.from} rangeTo={range.to} />
         </motion.div>
+
+        <ReportsAnalyticsPanels rangeFrom={range.from} rangeTo={range.to} />
+
+        {approvalItems.length > 0 && (
+          <Card className="overflow-hidden dark-card-glow">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-sm font-semibold">
+                    {t.dashboard.approvalQueue}
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    {t.dashboard.approvalQueueDesc}
+                  </p>
+                </div>
+                <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-xs">
+                  {approvalItems.length}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
+              <div className="max-h-64 space-y-2 overflow-y-auto">
+                {approvalItems.map((contentItem) => (
+                  <div
+                    key={contentItem.id}
+                    className="flex items-center gap-3 rounded-xl bg-muted/20 p-2.5"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{contentItem.title}</p>
+                      <div className="mt-1 flex items-center gap-2">
+                        <Avatar className="h-4 w-4">
+                          <AvatarFallback className="bg-muted text-xs">
+                            {getUserInitials(contentItem.authorId)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm text-muted-foreground">
+                          {getUserName(contentItem.authorId)}
+                        </span>
+                        <span className="text-sm text-muted-foreground/60">·</span>
+                        <span className="text-sm text-muted-foreground/60">
+                          {getRelativeTime(contentItem.updatedAt, locale)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {approvalItems.length === 0 && (
+          <Card className="overflow-hidden dark-card-glow">
+            <CardContent className="flex flex-col items-center justify-center gap-2 py-8">
+              <EmptyStateIllustration illustrationId="success-check" size="sm" />
+              <p className="text-sm font-medium text-foreground">{t.dashboard.allClear}</p>
+              <p className="text-xs text-muted-foreground">{t.dashboard.allClearDesc}</p>
+            </CardContent>
+          </Card>
+        )}
       </ViewTabPanel>
     </ViewShell>
   );

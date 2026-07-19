@@ -8,14 +8,11 @@ WORKDIR /app
 # Installer OpenSSL (requis par Prisma pour PostgreSQL)
 RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
-# Install Bun pour utiliser bun.lock
-RUN npm install -g bun
-
 # Copier les fichiers de dépendances racine
-COPY package.json bun.lock ./
+COPY package.json package-lock.json ./
 
-# Installer les dépendances
-RUN bun install --no-frozen-lockfile
+# Installer les dépendances (npm, lockfile unique)
+RUN npm install --legacy-peer-deps
 
 # Générer le client Prisma
 COPY prisma ./prisma
@@ -24,5 +21,5 @@ RUN npx prisma generate
 # Exposer le port
 EXPOSE 3001
 
-# Lancer avec tsx watch (hot reload)
-CMD ["npx", "tsx", "watch", "server/index.ts"]
+# Appliquer les migrations, regénérer le client Prisma, puis lancer avec tsx watch (hot reload)
+CMD ["sh", "-c", "npx prisma migrate deploy && npx prisma generate && npx tsx watch server/index.ts"]

@@ -9,10 +9,10 @@ import {
   Hash,
   SlidersHorizontal,
   Gem,
+  BookOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Tooltip,
   TooltipContent,
@@ -37,7 +37,7 @@ export type DashboardPlatform =
   | 'youtube'
   | 'linkedin';
 
-export type DashboardTool = 'reports' | 'analytics' | 'hashtag' | 'messageSettings';
+export type DashboardTool = 'reports' | 'hashtag' | 'messageSettings' | 'documentation';
 
 interface DashboardSidebarNavProps {
   collapsed?: boolean;
@@ -140,11 +140,6 @@ const ConnectionNavItem = memo(function ConnectionNavItem({
       {!collapsed && (
         <>
           <span className="flex-1 text-left truncate">{label}</span>
-          {item.connected && item.id === 'facebook' && (
-            <Avatar className="h-5 w-5 shrink-0 ring-1 ring-white/20">
-              <AvatarFallback className="text-[9px] bg-blue-600 text-white">🇨🇩</AvatarFallback>
-            </Avatar>
-          )}
           {!item.connected && !item.premium && (
             <span className="shrink-0 h-5 w-5 flex items-center justify-center rounded-full text-sidebar-foreground/35">
               <Plus className="h-3.5 w-3.5" />
@@ -240,29 +235,17 @@ export function DashboardConnectionsNav({
   const ds = t.dashboardSidebar;
 
   return (
-    <div className="space-y-1">
-      <div className="space-y-0.5">
-        {CONNECTIONS.map((item) => (
-          <ConnectionNavItem
-            key={item.id}
-            item={item}
-            label={ds.connections[item.labelKey]}
-            active={activePlatform === item.id}
-            collapsed={collapsed}
-            onClick={() => onPlatformChange(item.id)}
-          />
-        ))}
-      </div>
-
-      {!collapsed && (
-        <button
-          type="button"
-          className="w-full mt-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border border-sidebar-border/80 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors min-h-[40px]"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          {ds.moreConnections}
-        </button>
-      )}
+    <div className="space-y-0.5">
+      {CONNECTIONS.map((item) => (
+        <ConnectionNavItem
+          key={item.id}
+          item={item}
+          label={ds.connections[item.labelKey]}
+          active={activePlatform === item.id}
+          collapsed={collapsed}
+          onClick={() => onPlatformChange(item.id)}
+        />
+      ))}
     </div>
   );
 }
@@ -295,13 +278,6 @@ export function DashboardToolsNav({
         onClick={() => handleToolClick('reports', 'reports')}
       />
       <ToolNavItem
-        icon={<FileBarChart className="h-4 w-4" />}
-        label={ds.tools.analytics}
-        active={activeTool === 'analytics'}
-        collapsed={collapsed}
-        onClick={() => handleToolClick('analytics', 'statistics')}
-      />
-      <ToolNavItem
         icon={<Hash className="h-4 w-4" />}
         label={ds.tools.hashtagTracker}
         active={activeTool === 'hashtag'}
@@ -314,6 +290,13 @@ export function DashboardToolsNav({
         active={activeTool === 'messageSettings'}
         collapsed={collapsed}
         onClick={() => handleToolClick('messageSettings', 'settings')}
+      />
+      <ToolNavItem
+        icon={<BookOpen className="h-4 w-4" />}
+        label={ds.tools.documentation}
+        active={activeTool === 'documentation'}
+        collapsed={collapsed}
+        onClick={() => handleToolClick('documentation', 'documentation')}
       />
     </div>
   );

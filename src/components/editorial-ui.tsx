@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { editorialClasses, editorialPrimaryStyle } from '@/lib/editorial-design';
+import { EmptyStateIllustration } from '@/components/empty-state-illustration';
 
 export function EditorialPageShell({
   children,
@@ -71,19 +72,31 @@ export function EditorialEmptyState({
   title,
   description,
   className,
+  illustrationId,
+  series2Id,
 }: {
   icon?: React.ElementType;
   title: string;
   description?: string;
   className?: string;
+  illustrationId?: import('@/lib/itm-illustrations').ItmIllustrationId;
+  series2Id?: import('@/lib/itm-illustrations-2').ItmIllustration2Id;
 }) {
   return (
     <div className={cn(editorialClasses.emptyState, className)}>
-      {Icon && (
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F5F7F9] border border-[#E8ECEF]">
+      {illustrationId || series2Id ? (
+        <div className="mb-4 flex justify-center">
+          <EmptyStateIllustration
+            illustrationId={illustrationId}
+            series2Id={series2Id}
+            size="sm"
+          />
+        </div>
+      ) : Icon ? (
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#E8ECEF] bg-[#F5F7F9]">
           <Icon className="h-7 w-7 text-[#8B939E]" />
         </div>
-      )}
+      ) : null}
       <p className="text-sm font-medium text-[#5C6470]">{title}</p>
       {description && (
         <p className="mt-1 text-sm text-[#8B939E]">{description}</p>

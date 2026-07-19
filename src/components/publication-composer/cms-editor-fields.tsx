@@ -1,9 +1,8 @@
 'use client';
 
-import { Plus, X, Check } from 'lucide-react';
+import { X, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -13,6 +12,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n';
 import { useAppStore } from '@/lib/store';
@@ -20,12 +25,12 @@ import { useUsers } from '@/hooks/use-users';
 import { useDistributionChannels } from '@/hooks/use-distribution-channels';
 import type { PublicationComposerType } from '@/lib/publication-composer';
 import { publicationTypes } from '@/lib/publication-composer';
-import { ComposerTypeBar } from './composer-type-bar';
 import { ComposerContentEditor } from './composer-content-editor';
+import type { TemplatePlaceholders } from './newsletter-template-picker';
+import type { ReactNode } from 'react';
 
 export interface CmsFormState {
   title: string;
-  summary: string;
   body: string;
   authorId: string;
   tags: string[];
@@ -44,6 +49,8 @@ interface CmsEditorFieldsProps {
   onRemoveTag: (tag: string) => void;
   onTagKeyDown: (e: React.KeyboardEvent) => void;
   onToggleChannel: (channelId: string) => void;
+  placeholders?: Partial<TemplatePlaceholders>;
+  sectionsEditor?: ReactNode;
 }
 
 const ARTICLE_CATEGORIES = ['Stratégie', 'Guide', 'Finance', 'Conformité', 'Événement', 'Produit'];
@@ -56,6 +63,8 @@ export function CmsEditorFields({
   onRemoveTag,
   onTagKeyDown,
   onToggleChannel,
+  placeholders,
+  sectionsEditor,
 }: CmsEditorFieldsProps) {
   const { t } = useTranslation();
   const pc = t.publicationComposer;
@@ -65,11 +74,24 @@ export function CmsEditorFields({
   const { data: channels = [] } = useDistributionChannels(activeTenantId);
   const typeConfig = publicationTypes.find((item) => item.type === type);
   const TypeIcon = typeConfig?.icon;
+  const selectedChannelItems = channels.filter((channel) =>
+    form.selectedChannels.includes(channel.id)
+  );
+  const channelsTriggerLabel =
+    selectedChannelItems.length === 0
+      ? '—'
+      : selectedChannelItems.length === 1
+        ? selectedChannelItems[0].name
+        : `${selectedChannelItems[0].name} +${selectedChannelItems.length - 1}`;
+
+  const ph = {
+    title: placeholders?.title ?? cc.titlePlaceholder,
+    emailSubject: placeholders?.emailSubject ?? pc.emailSubjectPlaceholder,
+    body: placeholders?.body ?? pc.bodyPlaceholder,
+  };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <ComposerTypeBar type={type} />
-
       <div className="mb-4 grid gap-3 sm:grid-cols-2">
         <div className="space-y-2 sm:col-span-2">
           <Label htmlFor="composer-title" className="text-sm font-medium text-[#1D141F]">
@@ -77,7 +99,7 @@ export function CmsEditorFields({
           </Label>
           <Input
             id="composer-title"
-            placeholder={cc.titlePlaceholder}
+            placeholder={ph.title}
             value={form.title}
             onChange={(e) => onChange('title', e.target.value)}
             className="h-10 border-[#E8ECEF] bg-[#FAFBFC] text-sm focus:border-[oklch(0.55_0.18_250)]"
@@ -91,7 +113,7 @@ export function CmsEditorFields({
             </Label>
             <Input
               id="composer-email-subject"
-              placeholder={pc.emailSubjectPlaceholder}
+              placeholder={ph.emailSubject}
               value={form.emailSubject}
               onChange={(e) => onChange('emailSubject', e.target.value)}
               className="h-10 border-[#E8ECEF] bg-[#FAFBFC] text-sm"
@@ -133,42 +155,32 @@ export function CmsEditorFields({
           </div>
         )}
 
-        <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="composer-summary" className="text-sm font-medium text-[#1D141F]">
-            {cc.summaryLabel}
-          </Label>
-          <Textarea
-            id="composer-summary"
-            value={form.summary}
-            onChange={(e) => onChange('summary', e.target.value)}
-            placeholder={cc.summaryPlaceholder}
-            className="min-h-[100px] resize-none border-[#E8ECEF] bg-[#FAFBFC] px-4 py-3 text-sm leading-relaxed focus-visible:border-[oklch(0.55_0.18_250)] sm:min-h-[120px]"
-          />
         </div>
-      </div>
 
       <div className="mb-4 space-y-2">
         <Label htmlFor="composer-body" className="text-sm font-medium text-[#1D141F]">
           {pc.bodyLabel}
         </Label>
-        <ComposerContentEditor
-          id="composer-body"
-          value={form.body}
-          onChange={(value) => onChange('body', value)}
-          placeholder={pc.bodyPlaceholder}
-          counterIcon={
-            TypeIcon ? (
-              <TypeIcon className={cn('h-3.5 w-3.5', typeConfig?.color)} />
-            ) : undefined
-          }
-        />
+        {sectionsEditor ?? (
+          <ComposerContentEditor
+            id="composer-body"
+            value={form.body}
+            onChange={(value) => onChange('body', value)}
+            placeholder={ph.body}
+            counterIcon={
+              TypeIcon ? (
+                <TypeIcon className={cn('h-3.5 w-3.5', typeConfig?.color)} />
+              ) : undefined
+            }
+          />
+        )}
       </div>
 
-      <div className="space-y-4 border-t border-[#E8ECEF] pt-4">
-        <div className="space-y-2">
-          <Label className="text-sm font-medium text-[#1D141F]">{cc.authorLabel}</Label>
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-[#E8ECEF] pt-3 text-sm">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-[#8B939E]">{cc.authorLabel}</span>
           <Select value={form.authorId} onValueChange={(v) => onChange('authorId', v)}>
-            <SelectTrigger className="h-10 border-[#E8ECEF] bg-[#FAFBFC] text-sm">
+            <SelectTrigger className="h-7 w-auto min-w-[120px] border-transparent bg-[#F0F2F5] px-2 text-xs hover:bg-[#E8ECEF]">
               <SelectValue placeholder={cc.unassigned} />
             </SelectTrigger>
             <SelectContent>
@@ -186,9 +198,9 @@ export function CmsEditorFields({
           </Select>
         </div>
 
-        <div className="space-y-2">
-          <Label className="text-sm font-medium text-[#1D141F]">{cc.tagsLabel}</Label>
-          <div className="flex min-h-[42px] flex-wrap items-center gap-1.5 rounded-lg border border-[#E8ECEF] bg-[#FAFBFC] p-2 focus-within:border-[oklch(0.55_0.18_250)] focus-within:ring-2 focus-within:ring-[oklch(0.55_0.18_250)]/20">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-[#8B939E]">{cc.tagsLabel}</span>
+          <div className="flex min-h-[28px] flex-wrap items-center gap-1 rounded-md bg-[#F0F2F5] px-1.5 py-0.5 focus-within:ring-2 focus-within:ring-[oklch(0.55_0.18_250)]/20">
             <AnimatePresence mode="popLayout">
               {form.tags.map((tag) => (
                 <motion.div
@@ -200,11 +212,11 @@ export function CmsEditorFields({
                 >
                   <Badge
                     variant="secondary"
-                    className="gap-1 border-[oklch(0.55_0.18_250/0.2)] bg-[oklch(0.55_0.18_250/0.1)] px-2 py-0.5 text-xs text-[oklch(0.55_0.18_250)]"
+                    className="gap-1 border-[oklch(0.55_0.18_250/0.2)] bg-[oklch(0.55_0.18_250/0.1)] px-1.5 py-0 text-xs text-[oklch(0.55_0.18_250)]"
                   >
                     {tag}
-                    <button type="button" onClick={() => onRemoveTag(tag)} className="ml-0.5 hover:text-rose-500">
-                      <X className="h-3 w-3" />
+                    <button type="button" onClick={() => onRemoveTag(tag)} className="hover:text-rose-500">
+                      <X className="h-2.5 w-2.5" />
                     </button>
                   </Badge>
                 </motion.div>
@@ -216,44 +228,41 @@ export function CmsEditorFields({
               onChange={(e) => onChange('tagInput', e.target.value)}
               onKeyDown={onTagKeyDown}
               placeholder={form.tags.length === 0 ? cc.tagsPlaceholder : ''}
-              className="min-w-[120px] flex-1 border-0 bg-transparent text-sm outline-none placeholder:text-[#8B939E]"
+              className="w-[90px] border-0 bg-transparent text-xs outline-none placeholder:text-[#8B939E]"
             />
-            {form.tagInput.trim() && (
-              <button
-                type="button"
-                onClick={onAddTag}
-                className="flex h-5 w-5 items-center justify-center rounded-full bg-[oklch(0.55_0.18_250/0.15)] hover:bg-[oklch(0.55_0.18_250/0.25)]"
-              >
-                <Plus className="h-3 w-3 text-[oklch(0.55_0.18_250)]" />
-              </button>
-            )}
           </div>
         </div>
 
-        <div className="space-y-2">
-          <Label className="text-sm font-medium text-[#1D141F]">{cc.channelsLabel}</Label>
-          <div className="flex flex-wrap gap-2">
-            {channels.map((channel) => {
-              const isSelected = form.selectedChannels.includes(channel.id);
-              return (
-                <button
-                  key={channel.id}
-                  type="button"
-                  onClick={() => onToggleChannel(channel.id)}
-                  className={cn(
-                    'flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-all',
-                    isSelected
-                      ? 'border-[oklch(0.55_0.18_250/0.3)] bg-[oklch(0.55_0.18_250/0.1)] text-[oklch(0.55_0.18_250)]'
-                      : 'border-[#E8ECEF] bg-[#FAFBFC] text-[#5C6470] hover:bg-[#EEF1F4]'
-                  )}
-                >
-                  <span className="text-sm">{channel.icon}</span>
-                  <span>{channel.name}</span>
-                  {isSelected && <Check className="h-3 w-3" />}
-                </button>
-              );
-            })}
-          </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-[#8B939E]">{cc.channelsLabel}</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="flex h-7 w-auto min-w-[140px] max-w-[220px] items-center justify-between gap-1.5 rounded-md border-transparent bg-[#F0F2F5] px-2 text-xs font-medium text-[#1D141F] hover:bg-[#E8ECEF]"
+              >
+                <span className="truncate">{channelsTriggerLabel}</span>
+                <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[#8B939E]" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="min-w-[200px]">
+              {channels.length === 0 ? (
+                <div className="px-2 py-1.5 text-xs text-[#8B939E]">—</div>
+              ) : (
+                channels.map((channel) => (
+                  <DropdownMenuCheckboxItem
+                    key={channel.id}
+                    checked={form.selectedChannels.includes(channel.id)}
+                    onCheckedChange={() => onToggleChannel(channel.id)}
+                    onSelect={(e) => e.preventDefault()}
+                  >
+                    <span className="mr-1.5 text-sm leading-none">{channel.icon}</span>
+                    <span>{channel.name}</span>
+                  </DropdownMenuCheckboxItem>
+                ))
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </div>

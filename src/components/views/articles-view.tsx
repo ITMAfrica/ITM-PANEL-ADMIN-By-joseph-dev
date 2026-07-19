@@ -17,7 +17,6 @@ import {
   ViewSearchInput,
   BrandPrimaryButton,
 } from '@/components/view-layout';
-import { ResourceAnalyticsPanel } from '@/components/resource-analytics';
 import {
   ViewDataTable,
   ViewDataTableHeader,
@@ -92,8 +91,6 @@ export function ArticlesView() {
     <ViewShell>
       <ViewSubNav tabs={navTabs} activeTab={activeStatus} onTabChange={setActiveStatus} />
       <ViewTabPanel>
-        <ResourceAnalyticsPanel resourceId="articles" />
-
         <ViewToolbar
           actions={
             <BrandPrimaryButton onClick={() => openPublicationComposer({ type: 'article' })}>
@@ -129,7 +126,11 @@ export function ArticlesView() {
           </ViewDataTableHeader>
           <ViewDataTableBody>
             {filteredArticles.length === 0 ? (
-              <ViewDataTableEmpty colSpan={7} message={t.articles.noResults} />
+              <ViewDataTableEmpty
+                colSpan={7}
+                message={t.articles.noResults}
+                illustrationId="compose-article"
+              />
             ) : (
               filteredArticles.map((article) => {
                 const statusColor = contentStatusColors[article.status];

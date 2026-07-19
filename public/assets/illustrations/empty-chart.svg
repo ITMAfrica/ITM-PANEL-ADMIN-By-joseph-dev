@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 360" fill="none" role="img" aria-labelledby="t">
+  <title id="t">Pas de données</title>
+  <rect width="480" height="360" rx="28" fill="#FAFBFC"/>
+  <circle cx="420" cy="32" r="88" fill="#E2F343" fill-opacity="0.16"/>
+  <circle cx="48" cy="328" r="72" fill="#1D141F" fill-opacity="0.06"/>
+
+  <rect x="100" y="80" width="280" height="200" rx="16" fill="#1D141F"/>
+  <path d="M140 230V160M190 230V120M240 230V180M290 230V140M340 230V100" stroke="#E8ECEF" stroke-width="18" stroke-linecap="round" opacity="0.25"/>
+  <path d="M140 160V230M190 120V230M240 180V230M290 140V230M340 100V230" stroke="#E2F343" stroke-width="10" stroke-linecap="round" opacity="0.15"/>
+  <circle cx="340" cy="100" r="12" fill="#E2F343"/>
+</svg>

@@ -125,7 +125,7 @@ export function SiteConnectSection() {
 
   return (
     <div className="space-y-5">
-      <Card className="border shadow-sm overflow-hidden">
+      <Card className="shadow-sm overflow-hidden">
         <CardHeader className="pb-4">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-[oklch(0.55_0.18_250/0.1)] border border-[oklch(0.55_0.18_250/0.15)]">

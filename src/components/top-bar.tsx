@@ -53,7 +53,7 @@ import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  SECTION_NAV,
+  HEADER_SECTION_NAV,
   shouldShowAppSidebar,
   HEADER_PAGE_NAV,
   getSectionForPage,
@@ -69,6 +69,13 @@ import { AnimatedCalendar } from '@/components/icons/animated-calendar';
 const topBarIconBtn = (...classes: Array<string | false | undefined>) =>
   cn(
     'inline-flex items-center justify-center h-9 w-9 shrink-0 rounded-lg p-0 leading-none transition-all duration-150 [&_svg]:block [&_svg]:shrink-0',
+    ...classes
+  );
+
+/** Top-bar nav button with a visible title beside its icon. */
+const topBarLabelBtn = (...classes: Array<string | false | undefined>) =>
+  cn(
+    'inline-flex items-center justify-center h-9 shrink-0 rounded-lg px-2 leading-none transition-all duration-150 [&_svg]:block [&_svg]:shrink-0',
     ...classes
   );
 
@@ -187,7 +194,7 @@ export function TopBar() {
 
   return (
     <TooltipProvider delayDuration={200}>
-    <header className="fixed top-0 left-0 right-0 z-50 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center h-18 px-3 lg:px-4 bg-topbar text-topbar-foreground shadow-md">
+    <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between h-18 px-3 lg:px-4 bg-topbar text-topbar-foreground shadow-md">
       {/* Data loading indicator - thin bar at top */}
       <AnimatePresence>
         {isApiLoading && (
@@ -201,7 +208,7 @@ export function TopBar() {
         )}
       </AnimatePresence>
 
-      <div className="flex w-fit max-w-full items-center gap-2 lg:gap-3 min-w-0 overflow-hidden justify-self-start">
+      <div className="relative z-10 flex flex-1 items-center gap-2 lg:gap-3 min-w-0 overflow-hidden justify-start">
         {/* Mobile hamburger menu — home page only */}
         {showMobileSidebar && (
           <Button
@@ -233,7 +240,7 @@ export function TopBar() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 4 }}
               transition={{ duration: 0.15 }}
-              className="max-w-[min(100vw-12rem,16rem)] truncate text-sm font-semibold leading-none text-white/90 sm:max-w-[min(100vw-16rem,20rem)]"
+              className="max-w-[min(100vw-14rem,12rem)] truncate text-sm font-semibold leading-none text-white/90 sm:max-w-[min(100vw-18rem,16rem)] lg:max-w-[min(100vw-22rem,14rem)] xl:max-w-[min(100vw-26rem,18rem)] 2xl:max-w-[min(100vw-32rem,20rem)]"
               title={pageTitleLabel}
             >
               {pageTitle}
@@ -242,16 +249,35 @@ export function TopBar() {
         </div>
       </div>
 
-      {/* Center section navigation — Metricool-style icon nav */}
+      {/* Center section navigation — absolutely centered so side actions never collide */}
       <nav
-        className="hidden lg:flex items-center justify-center gap-3 xl:gap-4 shrink-0 self-center px-1.5 min-w-0"
+        className="pointer-events-none hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 items-center justify-center gap-3 xl:gap-5 2xl:gap-8 max-w-[min(100%,calc(100vw-8rem))] px-1.5 min-w-0 overflow-hidden"
         aria-label={getPageName(activePage)}
       >
-        {SECTION_NAV.map(({ key, defaultPage }) => {
+        {HEADER_SECTION_NAV.map(({ key, defaultPage }) => {
           const isActive = sectionKey === key;
           return (
             <Fragment key={key}>
-              {key === 'analysis' &&
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => setActivePage(defaultPage)}
+                    className={topBarLabelBtn(
+                      'pointer-events-auto gap-1.5 text-xs font-medium',
+                      isActive
+                        ? 'bg-white/15 text-white shadow-sm ring-1 ring-white/20'
+                        : 'text-white/55 hover:text-white hover:bg-white/10'
+                    )}
+                    aria-label={getSectionLabel(key)}
+                  >
+                    <AnimatedSectionNavIcon sectionKey={key} isActive={isActive} />
+                    <span className="inline whitespace-nowrap">{getSectionLabel(key)}</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{getSectionLabel(key)}</TooltipContent>
+              </Tooltip>
+              {key === 'communication' &&
                 HEADER_PAGE_NAV.map(({ pageId, icon: Icon }) => {
                   const isPageActive = activePage === pageId;
                   return (
@@ -260,7 +286,8 @@ export function TopBar() {
                         <button
                           type="button"
                           onClick={() => setActivePage(pageId)}
-                          className={topBarIconBtn(
+                          className={topBarLabelBtn(
+                            'pointer-events-auto gap-1.5 text-xs font-medium',
                             isPageActive
                               ? 'bg-white/15 text-white shadow-sm ring-1 ring-white/20'
                               : 'text-white/55 hover:text-white hover:bg-white/10'
@@ -272,43 +299,27 @@ export function TopBar() {
                           ) : (
                             <Icon className="h-5 w-5" />
                           )}
+                          <span className="inline whitespace-nowrap">{getPageName(pageId)}</span>
                         </button>
                       </TooltipTrigger>
                       <TooltipContent>{getPageName(pageId)}</TooltipContent>
                     </Tooltip>
                   );
                 })}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => setActivePage(defaultPage)}
-                    className={topBarIconBtn(
-                      isActive
-                        ? 'bg-white/15 text-white shadow-sm ring-1 ring-white/20'
-                        : 'text-white/55 hover:text-white hover:bg-white/10'
-                    )}
-                    aria-label={getSectionLabel(key)}
-                  >
-                    <AnimatedSectionNavIcon sectionKey={key} isActive={isActive} />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>{getSectionLabel(key)}</TooltipContent>
-              </Tooltip>
             </Fragment>
           );
         })}
       </nav>
 
-      <div className="flex items-center justify-end gap-1 lg:gap-1.5 min-w-0 self-center">
-        {/* What's New sparkle button */}
+      <div className="relative z-10 flex flex-1 items-center justify-end gap-1 lg:gap-1.5 min-w-0 shrink-0 pl-2">
+        {/* What's New sparkle button — only when there is room beside the CTA */}
         <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
                 className={topBarIconBtn(
-                  'hidden xl:inline-flex text-amber-400 hover:text-amber-300 hover:bg-white/10'
+                  'hidden 2xl:inline-flex text-amber-400 hover:text-amber-300 hover:bg-white/10'
                 )}
               >
                 <Sparkles className="h-4 w-4" />
@@ -317,11 +328,11 @@ export function TopBar() {
             <TooltipContent>{t.topbar.whatsNewTooltip}</TooltipContent>
         </Tooltip>
 
-        {/* Gradient CTA — full label on xl+ screens */}
+        {/* Gradient CTA — full label on wide screens */}
         <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                className="hidden xl:flex h-9 px-4 text-xs font-semibold metricool-gradient-cta shadow-md hover:shadow-lg transition-shadow shrink-0 whitespace-nowrap"
+                className="hidden 2xl:flex h-9 px-4 text-xs font-semibold metricool-gradient-cta shadow-md hover:shadow-lg transition-shadow shrink-0 whitespace-nowrap"
                 onClick={() => openComposerWithType()}
               >
                 <Plus className="h-3.5 w-3.5 mr-1.5 shrink-0" />
@@ -331,12 +342,12 @@ export function TopBar() {
             <TooltipContent>{t.topbar.newContent}</TooltipContent>
         </Tooltip>
 
-        {/* Compact CTA — icon only from sm to xl */}
+        {/* Compact CTA — icon from sm until full label fits */}
         <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 size="icon"
-                className="hidden sm:flex xl:hidden h-9 w-9 shrink-0 metricool-gradient-cta shadow-md hover:shadow-lg transition-shadow"
+                className="hidden sm:flex 2xl:hidden h-9 w-9 shrink-0 metricool-gradient-cta shadow-md hover:shadow-lg transition-shadow"
                 onClick={() => openComposerWithType()}
               >
                 <Plus className="h-4 w-4" />

@@ -17,7 +17,6 @@ import {
   ViewOutlineButton,
 } from '@/components/view-layout';
 import { UpgradePlanBanner } from '@/components/upgrade-plan-banner';
-import { ResourceAnalyticsPanel } from '@/components/resource-analytics';
 import {
   ViewDataTable,
   ViewDataTableHeader,
@@ -130,8 +129,6 @@ export function PublishedView() {
       <UpgradePlanBanner variant="published" />
       <ViewSubNav tabs={tabs} activeTab={activeTab} onTabChange={() => {}} />
       <ViewTabPanel>
-        <ResourceAnalyticsPanel resourceId="published-content" />
-
         <ViewToolbar>
           <ViewSearchInput value={search} onChange={setSearch} placeholder={t.published.search} />
           <ViewOutlineButton icon={<SortAsc className="h-3.5 w-3.5" />} onClick={cycleSort}>
@@ -155,7 +152,11 @@ export function PublishedView() {
           </ViewDataTableHeader>
           <ViewDataTableBody>
             {filtered.length === 0 ? (
-              <ViewDataTableEmpty colSpan={5} message={t.published.noResults} />
+              <ViewDataTableEmpty
+                colSpan={5}
+                message={t.published.noResults}
+                illustrationId="success-check"
+              />
             ) : (
               filtered.map((content) => {
                 const engagement = getEngagementRate(content);

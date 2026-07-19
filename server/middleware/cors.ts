@@ -13,10 +13,11 @@ const PRIVATE_HOST =
 function isDevFrontendOrigin(origin: string): boolean {
   if (process.env.NODE_ENV === 'production') return false;
   try {
-    const { protocol, hostname, port } = new URL(origin);
+    const { protocol, hostname } = new URL(origin);
     if (protocol !== 'http:' && protocol !== 'https:') return false;
-    if (!PRIVATE_HOST.test(hostname)) return false;
-    return port === '3002' || port === '';
+    // Allow any port on private hosts so embedded widgets can be tested
+    // on local sites (e.g. http://localhost:8080) against the API (:3001).
+    return PRIVATE_HOST.test(hostname);
   } catch {
     return false;
   }
@@ -32,7 +33,7 @@ export const corsMiddleware = cors({
       callback(null, true);
       return;
     }
-    callback(new Error(`Origin ${origin} not allowed by CORS`));
+    callback(null, false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

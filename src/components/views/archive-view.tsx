@@ -124,7 +124,11 @@ export function ArchiveView() {
           </ViewDataTableHeader>
           <ViewDataTableBody>
             {filtered.length === 0 ? (
-              <ViewDataTableEmpty colSpan={5} message={t.archive.noResults} />
+              <ViewDataTableEmpty
+                colSpan={5}
+                message={t.archive.noResults}
+                illustrationId="archive"
+              />
             ) : (
               filtered.map((content) => {
                 const typeColor = getContentTypeColor(content.contentType);

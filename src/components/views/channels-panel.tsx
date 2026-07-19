@@ -2,10 +2,12 @@
 
 import { useState, useMemo } from 'react';
 import { Switch } from '@/components/ui/switch';
-import { useDistributionChannels } from '@/hooks/use-distribution-channels';
+import { useDistributionChannels, useUpdateDistributionChannel, useCreateDistributionChannel } from '@/hooks/use-distribution-channels';
 import { useAppStore } from '@/lib/store';
 import { useTranslation } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
+import { ChannelSubscribersDrawer } from '@/components/channel-subscribers-drawer';
+import type { DistributionChannel } from '@/lib/types';
 import {
   ViewTabPanel,
   ViewToolbar,
@@ -13,6 +15,13 @@ import {
   ViewStatGrid,
   ViewStatCard,
 } from '@/components/view-layout';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Plus, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   ViewDataTable,
   ViewDataTableHeader,
@@ -46,14 +55,16 @@ export function ChannelsPanel() {
   const { t, locale } = useTranslation();
   const activeTenantId = useAppStore((s) => s.activeTenantId);
   const { data: channels = EMPTY_ARRAY } = useDistributionChannels(activeTenantId);
+  const updateChannel = useUpdateDistributionChannel();
+  const createChannel = useCreateDistributionChannel();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newType, setNewType] = useState('email');
+  const [newIcon, setNewIcon] = useState('mail');
   const [searchQuery, setSearchQuery] = useState('');
-  const [channelOverrides, setChannelOverrides] = useState<Record<string, boolean>>({});
   const [selectedAll, setSelectedAll] = useState(false);
-
-  const channelStates = useMemo(() => {
-    const base = Object.fromEntries(channels.map((c) => [c.id, c.isActive]));
-    return { ...base, ...channelOverrides };
-  }, [channels, channelOverrides]);
+  const [detailChannel, setDetailChannel] = useState<DistributionChannel | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const filteredChannels = useMemo(() => {
     return channels.filter((ch) =>
@@ -62,11 +73,36 @@ export function ChannelsPanel() {
   }, [channels, searchQuery]);
 
   const totalChannels = channels.length;
-  const activeChannels = Object.values(channelStates).filter(Boolean).length;
+  const activeChannels = channels.filter((c) => c.isActive).length;
   const totalSubscribers = channels.reduce((sum, ch) => sum + ch.subscriberCount, 0);
 
-  const toggleChannel = (id: string) => {
-    setChannelOverrides((prev) => ({ ...prev, [id]: !channelStates[id] }));
+  const toggleChannel = (id: string, isActive: boolean) => {
+    updateChannel.mutate({ id, data: { isActive: !isActive } });
+  };
+
+  const handleCreate = () => {
+    if (!newName.trim() || !activeTenantId) return;
+    createChannel.mutate(
+      { name: newName.trim(), type: newType, icon: newIcon, tenantId: activeTenantId },
+      {
+        onSuccess: () => {
+          setCreateOpen(false);
+          setNewName('');
+          setNewType('email');
+          setNewIcon('mail');
+          toast.success(locale === 'fr' ? 'Canal créé' : 'Channel created');
+        },
+        onError: (err) => {
+          toast.error(
+            err instanceof Error
+              ? err.message
+              : locale === 'fr'
+                ? 'Échec de la création du canal'
+                : 'Failed to create channel'
+          );
+        },
+      }
+    );
   };
 
   const formatLastSent = (dateStr?: string) => {
@@ -93,7 +129,94 @@ export function ChannelsPanel() {
         />
       </ViewStatGrid>
 
-      <ViewToolbar>
+      <ViewToolbar
+        actions={
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <DialogTrigger asChild>
+              <Button
+                size="sm"
+                className="h-9 gap-2"
+                style={{ backgroundColor: '#1D141F', color: '#E2F343' }}
+              >
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">{locale === 'fr' ? 'Nouveau canal' : 'New Channel'}</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[440px]">
+              <DialogHeader>
+                <DialogTitle className="text-[#1D141F]">
+                  {locale === 'fr' ? 'Créer un canal de diffusion' : 'Create Distribution Channel'}
+                </DialogTitle>
+                <DialogDescription>
+                  {locale === 'fr'
+                    ? 'Un canal représente une liste de diffusion. Il pourra être connecté à vos sites web.'
+                    : 'A channel represents a mailing list. It can be connected to your websites.'}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-[#1D141F]">
+                    {locale === 'fr' ? 'Nom du canal' : 'Channel Name'}
+                  </Label>
+                  <Input
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    placeholder={locale === 'fr' ? 'Ex: Newsletter ITM' : 'Ex: ITM Newsletter'}
+                    className="h-10 rounded-lg border-[#E8ECEF] bg-white"
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleCreate(); }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-[#1D141F]">Type</Label>
+                  <Select value={newType} onValueChange={setNewType}>
+                    <SelectTrigger className="h-10 w-full rounded-lg border-[#E8ECEF] bg-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="email">Email</SelectItem>
+                      <SelectItem value="web">Web</SelectItem>
+                      <SelectItem value="intranet">Intranet</SelectItem>
+                      <SelectItem value="social">{locale === 'fr' ? 'Réseaux sociaux' : 'Social'}</SelectItem>
+                      <SelectItem value="push">Push</SelectItem>
+                      <SelectItem value="sms">SMS</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-[#1D141F]">
+                    {locale === 'fr' ? 'Icône (optionnel)' : 'Icon (optional)'}
+                  </Label>
+                  <Input
+                    value={newIcon}
+                    onChange={(e) => setNewIcon(e.target.value)}
+                    placeholder="mail"
+                    className="h-10 rounded-lg border-[#E8ECEF] bg-white"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <Button variant="outline" size="sm" onClick={() => setCreateOpen(false)} className="h-9 border-[#E8ECEF] bg-white text-sm">
+                  {locale === 'fr' ? 'Annuler' : 'Cancel'}
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleCreate}
+                  disabled={!newName.trim() || createChannel.isPending}
+                  className="h-9 gap-2 text-sm"
+                  style={{ backgroundColor: '#1D141F', color: '#E2F343' }}
+                >
+                  {createChannel.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Plus className="h-4 w-4" />
+                  )}
+                  {locale === 'fr' ? 'Créer' : 'Create'}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        }
+      >
         <ViewSearchInput
           value={searchQuery}
           onChange={setSearchQuery}
@@ -119,13 +242,24 @@ export function ChannelsPanel() {
         </ViewDataTableHeader>
         <ViewDataTableBody>
           {filteredChannels.length === 0 ? (
-            <ViewDataTableEmpty colSpan={7} message={t.distributionChannels.noChannels} />
+            <ViewDataTableEmpty
+              colSpan={7}
+              message={t.distributionChannels.noChannels}
+              illustrationId="channels"
+            />
           ) : (
             filteredChannels.map((channel) => {
               const config = channelTypeConfig[channel.type] || channelTypeConfig.email;
-              const isActive = channelStates[channel.id];
+              const isActive = channel.isActive;
               return (
-                <ViewDataTableRow key={channel.id} className={cn(!isActive && 'opacity-60')}>
+                <ViewDataTableRow
+                  key={channel.id}
+                  className={cn(!isActive && 'opacity-60', 'cursor-pointer')}
+                  onClick={() => {
+                    setDetailChannel(channel);
+                    setDrawerOpen(true);
+                  }}
+                >
                   <ViewDataTableCheckboxCell />
                   <ViewDataTableCell>
                     <p className="font-medium text-[#1D141F] truncate">{channel.name}</p>
@@ -152,7 +286,8 @@ export function ChannelsPanel() {
                     <div onClick={(e) => e.stopPropagation()}>
                       <Switch
                         checked={isActive}
-                        onCheckedChange={() => toggleChannel(channel.id)}
+                        onCheckedChange={() => toggleChannel(channel.id, isActive)}
+                        disabled={updateChannel.isPending}
                         className="data-[state=checked]:bg-[oklch(0.55_0.18_250)]"
                       />
                     </div>
@@ -163,6 +298,12 @@ export function ChannelsPanel() {
           )}
         </ViewDataTableBody>
       </ViewDataTable>
+
+      <ChannelSubscribersDrawer
+        channel={detailChannel}
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+      />
     </ViewTabPanel>
   );
 }

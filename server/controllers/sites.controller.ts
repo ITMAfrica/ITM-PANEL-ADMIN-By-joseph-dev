@@ -8,7 +8,7 @@ import {
   listSitesByTenant,
   verifySiteInstallation,
 } from '../services/site.service';
-import { userCanAccessTenant } from '../lib/tenant-access';
+import { getUserTenantRole, isSuperAdmin, roleMeetsOrExceeds, userCanAccessTenant } from '../lib/tenant-access';
 
 export async function list(req: Request, res: Response) {
   const tenantId = req.authorizedTenantId!;
@@ -47,6 +47,13 @@ export async function verify(req: Request, res: Response) {
     const site = await db.site.findUnique({ where: { slug: slug as string } });
     if (!site || !req.user || !(await userCanAccessTenant(req.user, site.tenantId))) {
       res.status(404).json({ error: 'Site not found' });
+      return;
+    }
+
+    // Check workspace role: must be editor or higher
+    const effectiveRole = await getUserTenantRole(req.user, site.tenantId);
+    if (!effectiveRole || (!isSuperAdmin(req.user) && !roleMeetsOrExceeds(effectiveRole, 'editor'))) {
+      res.status(403).json({ error: 'Forbidden: insufficient workspace role' });
       return;
     }
 

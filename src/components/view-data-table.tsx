@@ -280,9 +280,13 @@ export function ViewDataTableCell({
 export function ViewDataTableCheckboxCell({
   transparent,
   tint,
+  checked,
+  onCheckedChange,
 }: {
   transparent?: boolean;
   tint?: TableColumnTint;
+  checked?: boolean;
+  onCheckedChange?: (checked: boolean) => void;
 } = {}) {
   const ctx = useViewDataTableContext();
   const isTransparent = resolveTransparent(transparent, ctx);
@@ -296,7 +300,11 @@ export function ViewDataTableCheckboxCell({
       )}
       onClick={(e) => e.stopPropagation()}
     >
-      <Checkbox aria-label="Select row" />
+      <Checkbox
+        checked={checked}
+        onCheckedChange={(v) => onCheckedChange?.(v === true)}
+        aria-label="Select row"
+      />
     </TableCell>
   );
 }
@@ -304,9 +312,13 @@ export function ViewDataTableCheckboxCell({
 export function ViewDataTableEmpty({
   colSpan,
   message,
+  illustrationId,
+  series2Id,
 }: {
   colSpan: number;
   message: string;
+  illustrationId?: import('@/lib/itm-illustrations').ItmIllustrationId;
+  series2Id?: import('@/lib/itm-illustrations-2').ItmIllustration2Id;
 }) {
   const { transparent } = useViewDataTableContext();
 
@@ -320,7 +332,11 @@ export function ViewDataTableEmpty({
         )}
       >
         <div className="flex flex-col items-center justify-center gap-3">
-          <EmptyStateIllustration />
+          <EmptyStateIllustration
+            illustrationId={illustrationId}
+            series2Id={series2Id}
+            size="sm"
+          />
           <span>{message}</span>
         </div>
       </TableCell>

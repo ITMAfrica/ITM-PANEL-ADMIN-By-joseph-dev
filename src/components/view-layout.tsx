@@ -38,7 +38,7 @@ export const viewPageClasses = {
   filterChip: 'px-2 py-1 rounded-md bg-muted/30 text-xs font-medium transition-colors',
   filterChipActive:
     'px-2 py-1 rounded-md bg-[#1D141F] text-[#E2F343] text-xs font-medium shadow-sm',
-  statCard: 'overflow-hidden dark-card-glow border',
+  statCard: 'overflow-hidden dark-card-glow',
   statCardShell:
     'relative flex items-center gap-3 rounded-xl glass-card p-3.5 shadow-sm transition-shadow hover:shadow-md dark-card-glow',
   statCardSimple:
@@ -258,21 +258,25 @@ export function ViewEmptyState({
   title,
   description,
   className,
+  illustrationId,
+  series2Id,
 }: {
   icon?: React.ElementType;
   title: string;
   description?: string;
   className?: string;
+  illustrationId?: import('@/lib/itm-illustrations').ItmIllustrationId;
+  series2Id?: import('@/lib/itm-illustrations-2').ItmIllustration2Id;
 }) {
   return (
     <div className={cn('flex flex-col items-center justify-center py-16 text-center', className)}>
-      {Icon ? (
+      {Icon && !illustrationId && !series2Id ? (
         <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/50">
           <Icon className="h-7 w-7 text-muted-foreground" />
         </div>
       ) : (
         <div className="mb-4">
-          <EmptyStateIllustration />
+          <EmptyStateIllustration illustrationId={illustrationId} series2Id={series2Id} />
         </div>
       )}
       <p className="text-sm font-medium text-muted-foreground">{title}</p>
@@ -285,12 +289,23 @@ export function ViewEmptyState({
 export function ViewPlaceholderPanel({
   title,
   description,
+  illustrationId = 'waiting',
+  series2Id,
 }: {
   title: string;
   description?: string;
+  illustrationId?: import('@/lib/itm-illustrations').ItmIllustrationId;
+  series2Id?: import('@/lib/itm-illustrations-2').ItmIllustration2Id;
 }) {
   return (
     <ViewContentSurface className="px-6 py-16 text-center">
+      <div className="mb-4 flex justify-center">
+        <EmptyStateIllustration
+          illustrationId={illustrationId}
+          series2Id={series2Id}
+          size="md"
+        />
+      </div>
       <p className="text-sm font-medium text-muted-foreground">{title}</p>
       {description && <p className="mt-1 text-sm text-muted-foreground/70">{description}</p>}
     </ViewContentSurface>

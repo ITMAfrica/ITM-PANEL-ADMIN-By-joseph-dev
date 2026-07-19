@@ -107,7 +107,7 @@ function computeCampaignMetrics(
 }
 
 export async function getDashboardSummary(tenantId: string): Promise<DashboardSummary> {
-  const [contentRows, campaigns, channels, reviewRows] = await Promise.all([
+  const [contentRows, campaigns, channels, reviewRows, subscriberCount] = await Promise.all([
     db.content.findMany({
       where: { tenantId },
       select: {
@@ -132,6 +132,10 @@ export async function getDashboardSummary(tenantId: string): Promise<DashboardSu
         subscriberCount: true,
       },
     }),
+    db.content.findMany({
+      where: { tenantId, status: 'review' },
+    }),
+    db.subscriber.count({ where: { tenantId } }),
     db.content.findMany({
       where: { tenantId, status: 'review' },
       orderBy: { updatedAt: 'desc' },
@@ -183,7 +187,7 @@ export async function getDashboardSummary(tenantId: string): Promise<DashboardSu
     channels: {
       total: channels.length,
       active: channels.filter((c) => c.isActive).length,
-      subscribers: channels.reduce((sum, c) => sum + c.subscriberCount, 0),
+      subscribers: subscriberCount,
     },
     approvalQueue: reviewRows.map((row) => ({
       id: row.id,

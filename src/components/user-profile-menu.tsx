@@ -3,7 +3,6 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   Settings,
-  Megaphone,
   LogOut,
 } from 'lucide-react';
 import {
@@ -82,14 +81,6 @@ export function UserProfileMenuContent() {
         label={m.accountSettings}
         icon={<MenuIcon icon={Settings} />}
         onClick={() => setActivePage('settings')}
-      />
-
-      <DropdownMenuSeparator className="my-0" />
-
-      {/* Section 3 — Help & resources */}
-      <ProfileMenuItem
-        label={m.whatsNew}
-        icon={<MenuIcon icon={Megaphone} />}
       />
 
       <DropdownMenuSeparator className="my-0" />

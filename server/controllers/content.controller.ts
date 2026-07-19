@@ -14,14 +14,80 @@ import {
   submitContentForReview,
   updateContent,
 } from '../services/content.service';
-import { mapContent, toApprovedContentItem } from '../services/mappers/content.mapper';
-import { userCanAccessTenant } from '../lib/tenant-access';
+import { sendNewsletterById } from '../services/newsletter.service';
+import { mapContent, mapContentDetail, toApprovedContentItem } from '../services/mappers/content.mapper';
+import { getUserTenantRole, isSuperAdmin, roleMeetsOrExceeds, userCanAccessTenant } from '../lib/tenant-access';
+import {
+  contentCreateSchema,
+  contentUpdateSchema,
+  hasNewsletterChannelIds,
+  hasNewsletterEmailSubject,
+  newsletterStatusRequiresChannels,
+} from '../lib/schemas';
+import { parseBody } from '../lib/validate';
+
+const NEWSLETTER_CHANNEL_REQUIRED =
+  'At least one channel is required to publish or schedule a newsletter';
+
+const NEWSLETTER_SUBJECT_REQUIRED =
+  'emailSubject is required to publish or schedule a newsletter';
+
+function mergeContentMetadata(
+  existing: unknown,
+  patch: Record<string, unknown> | undefined
+): Record<string, unknown> {
+  const base =
+    existing && typeof existing === 'object' && !Array.isArray(existing)
+      ? (existing as Record<string, unknown>)
+      : {};
+  return patch ? { ...base, ...patch } : base;
+}
 
 async function getAuthorizedContent(req: Request, id: string) {
   const row = await getContentByIdAdmin(id);
   if (!row || !req.user) return null;
   if (!(await userCanAccessTenant(req.user, row.tenantId))) return null;
   return row;
+}
+
+/**
+ * If the content is a newsletter that just became 'published', start dispatching
+ * to subscribers in the background so the HTTP response is not blocked by SMTP.
+ * Returns true when a background dispatch was scheduled.
+ */
+function scheduleNewsletterDispatch(
+  row: { id: string; type: string; status: string },
+  wasPublished: boolean
+): boolean {
+  if (row.type !== 'newsletter' || row.status !== 'published' || wasPublished) {
+    return false;
+  }
+  void sendNewsletterById(row.id).catch((error) => {
+    console.error('[content] Newsletter auto-dispatch failed:', error);
+  });
+  return true;
+}
+
+/**
+ * Like `getAuthorizedContent`, but also checks that the user has at least
+ * the given role within the content's workspace.
+ */
+async function getAuthorizedContentWithRole(
+  req: Request,
+  id: string,
+  requiredRole: string
+) {
+  const row = await getAuthorizedContent(req, id);
+  if (!row || !req.user) return null;
+
+  const effectiveRole = await getUserTenantRole(req.user, row.tenantId);
+  if (!effectiveRole) return null;
+
+  if (isSuperAdmin(req.user) || roleMeetsOrExceeds(effectiveRole, requiredRole)) {
+    return row;
+  }
+
+  return null;
 }
 
 export async function list(req: Request, res: Response) {
@@ -44,14 +110,11 @@ export async function list(req: Request, res: Response) {
 
 export async function create(req: Request, res: Response) {
   try {
-    const body = req.body;
-    const tenantId = req.authorizedTenantId!;
-    const { type, title, excerpt, body: contentBody, siteId, authorId, status, priority, tags, metadata, scheduledAt } = body;
+    const body = parseBody(contentCreateSchema, req, res);
+    if (!body) return;
 
-    if (!type || !title) {
-      res.status(400).json({ error: 'type, title required' });
-      return;
-    }
+    const tenantId = req.authorizedTenantId!;
+    const { type, title, body: contentBody, siteId, authorId, status, priority, tags, metadata, scheduledAt } = body;
 
     let resolvedSiteId = siteId;
     if (!resolvedSiteId) {
@@ -62,7 +125,6 @@ export async function create(req: Request, res: Response) {
     const row = await createContent({
       type,
       title,
-      excerpt,
       body: contentBody,
       tenantId,
       siteId: resolvedSiteId,
@@ -74,7 +136,10 @@ export async function create(req: Request, res: Response) {
       scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
     });
 
-    res.status(201).json(mapContent(row));
+    // Auto-dispatch in background: respond as soon as content is saved.
+    const dispatching = scheduleNewsletterDispatch(row, false);
+    const response = mapContent(row);
+    res.status(201).json(dispatching ? { ...response, dispatching: true } : response);
   } catch (error) {
     console.error('POST /api/content:', error);
     res.status(500).json({ error: 'Failed to create content' });
@@ -88,7 +153,7 @@ export async function getById(req: Request, res: Response) {
       res.status(404).json({ error: 'Not found' });
       return;
     }
-    res.json(mapContent(row));
+    res.json(mapContentDetail(row));
   } catch {
     res.status(500).json({ error: 'Failed to fetch content' });
   }
@@ -96,16 +161,35 @@ export async function getById(req: Request, res: Response) {
 
 export async function update(req: Request, res: Response) {
   try {
-    const existing = await getAuthorizedContent(req, req.params.id as string);
+    const existing = await getAuthorizedContentWithRole(req, req.params.id as string, 'editor');
     if (!existing) {
       res.status(404).json({ error: 'Not found' });
       return;
     }
 
-    const body = req.body;
+    const body = parseBody(contentUpdateSchema, req, res);
+    if (!body) return;
+
+    const nextStatus = body.status ?? existing.status;
+    if (
+      existing.type === 'newsletter' &&
+      newsletterStatusRequiresChannels(nextStatus)
+    ) {
+      const effectiveMetadata = mergeContentMetadata(existing.metadata, body.metadata);
+      if (!hasNewsletterChannelIds(effectiveMetadata)) {
+        res.status(400).json({ error: NEWSLETTER_CHANNEL_REQUIRED });
+        return;
+      }
+      if (!hasNewsletterEmailSubject(effectiveMetadata)) {
+        res.status(400).json({ error: NEWSLETTER_SUBJECT_REQUIRED });
+        return;
+      }
+    }
+
+    const wasPublished = existing.status === 'published';
+
     const row = await updateContent(req.params.id as string, {
       title: body.title,
-      excerpt: body.excerpt,
       body: body.body,
       status: body.status,
       priority: body.priority,
@@ -122,7 +206,11 @@ export async function update(req: Request, res: Response) {
       res.status(404).json({ error: 'Not found' });
       return;
     }
-    res.json(mapContent(row));
+
+    // Auto-dispatch in background when a newsletter transitions to 'published'.
+    const dispatching = scheduleNewsletterDispatch(row, wasPublished);
+    const response = mapContentDetail(row);
+    res.json(dispatching ? { ...response, dispatching: true } : response);
   } catch {
     res.status(500).json({ error: 'Failed to update content' });
   }
@@ -130,7 +218,7 @@ export async function update(req: Request, res: Response) {
 
 export async function remove(req: Request, res: Response) {
   try {
-    const existing = await getAuthorizedContent(req, req.params.id as string);
+    const existing = await getAuthorizedContentWithRole(req, req.params.id as string, 'tenant_admin');
     if (!existing) {
       res.status(404).json({ error: 'Not found' });
       return;
@@ -149,10 +237,21 @@ export async function remove(req: Request, res: Response) {
 
 export async function publish(req: Request, res: Response) {
   try {
-    const existing = await getAuthorizedContent(req, req.params.id as string);
+    const existing = await getAuthorizedContentWithRole(req, req.params.id as string, 'editor');
     if (!existing) {
       res.status(404).json({ error: 'Content not found or not ready to publish' });
       return;
+    }
+
+    if (existing.type === 'newsletter') {
+      if (!hasNewsletterChannelIds(existing.metadata)) {
+        res.status(400).json({ error: NEWSLETTER_CHANNEL_REQUIRED });
+        return;
+      }
+      if (!hasNewsletterEmailSubject(existing.metadata)) {
+        res.status(400).json({ error: NEWSLETTER_SUBJECT_REQUIRED });
+        return;
+      }
     }
 
     const content = await publishContent(req.params.id as string);
