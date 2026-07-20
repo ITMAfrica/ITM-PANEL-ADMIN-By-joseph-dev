@@ -64,7 +64,7 @@ router.get('/subscribe', async (req, res) => {
     try {
       const channel = await db.distributionChannel.findUnique({
         where: { id: channelId },
-        select: { id: true, isActive: true },
+        select: { id: true, isActive: true, type: true },
       });
       if (!channel) {
         res.status(404).type('application/javascript').send('// Channel not found');
@@ -72,6 +72,10 @@ router.get('/subscribe', async (req, res) => {
       }
       if (!channel.isActive) {
         res.status(404).type('application/javascript').send('// Channel is inactive');
+        return;
+      }
+      if (channel.type === 'social') {
+        res.status(400).type('application/javascript').send('// Social channels have no subscribe widget');
         return;
       }
     } catch {
@@ -115,10 +119,14 @@ router.post('/token', requireAuth, requireTenantBody, async (req, res) => {
     // Verify the channel belongs to the tenant
     const channel = await db.distributionChannel.findUnique({
       where: { id: channelId },
-      select: { id: true, tenantId: true, isActive: true },
+      select: { id: true, tenantId: true, isActive: true, type: true },
     });
     if (!channel || channel.tenantId !== tenantId) {
       res.status(404).json({ error: 'Channel not found' });
+      return;
+    }
+    if (channel.type === 'social') {
+      res.status(400).json({ error: 'Social channels have no subscribe widget' });
       return;
     }
 

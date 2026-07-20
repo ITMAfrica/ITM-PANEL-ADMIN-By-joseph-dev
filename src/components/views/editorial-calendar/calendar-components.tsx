@@ -1,16 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, memo } from 'react';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
 } from '@/components/ui/hover-card';
-import { ChevronDown } from 'lucide-react';
 import { format, isToday } from 'date-fns';
 import { enUS, fr } from 'date-fns/locale';
 import { useUserLookup } from '@/hooks/use-user-lookup';
@@ -21,6 +14,7 @@ import { contentStatusColors, contentStatusLabels } from '@/lib/ui-constants';
 import { cn } from '@/lib/utils';
 import { formatContentPreview } from '@/lib/media-insert';
 import { brandColors } from '@/components/view-layout';
+import { publicationTypes } from '@/lib/publication-composer';
 import { buildSlotDate, GRID_LINE, ROW_HEIGHT } from './types';
 
 export function FacebookIcon({ className }: { className?: string }) {
@@ -39,34 +33,6 @@ export function useLiveClock() {
   }, []);
   return now;
 }
-
-export const EditorialClockTrailing = memo(function EditorialClockTrailing({ locale }: { locale: string }) {
-  const { t } = useTranslation();
-  const now = useLiveClock();
-  const timeLabel = now.toLocaleTimeString(locale === 'fr' ? 'fr-FR' : 'en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          className="hidden sm:inline-flex items-center gap-1.5 shrink-0 pb-3 text-sm text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
-        >
-          {timeLabel} - {t.editorialCalendar.timezone}
-          <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem>{t.editorialCalendar.timezone}</DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-});
-
 export const CalendarSlot = memo(function CalendarSlot({
   day,
   hour,
@@ -250,20 +216,37 @@ export function CalendarEventBlock({
     setContentDetailOpen(true);
   }, [content, setSelectedContent, setContentDetailOpen]);
 
+  const typeConfig = content
+    ? publicationTypes.find((pt) => pt.type === content.type)
+    : undefined;
+  const TypeIcon = typeConfig?.icon;
+
   const eventContent = (
-    <>
-      <p
-        className={cn(
-          'truncate text-xs font-semibold',
-          isPublished ? 'text-[#8B939E]' : 'text-[#1D141F]'
-        )}
-      >
-        {event.title}
-      </p>
-      <p className={cn('text-[10px]', isPublished ? 'text-[#A8B0BA]' : 'text-[#5C6470]')}>
-        {format(new Date(event.date), 'HH:mm')}
-      </p>
-    </>
+    <div className="flex items-start gap-1.5">
+      {TypeIcon ? (
+        <TypeIcon
+          className={cn(
+            'mt-0.5 h-3 w-3 shrink-0',
+            typeConfig.color,
+            isPublished && 'opacity-60'
+          )}
+          aria-hidden
+        />
+      ) : null}
+      <div className="min-w-0 flex-1">
+        <p
+          className={cn(
+            'truncate text-xs font-semibold',
+            isPublished ? 'text-[#8B939E]' : 'text-[#1D141F]'
+          )}
+        >
+          {event.title}
+        </p>
+        <p className={cn('text-[10px]', isPublished ? 'text-[#A8B0BA]' : 'text-[#5C6470]')}>
+          {format(new Date(event.date), 'HH:mm')}
+        </p>
+      </div>
+    </div>
   );
 
   const isDraggable = !isPublished && content?.status === 'scheduled';

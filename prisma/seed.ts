@@ -1,5 +1,6 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 import { NEWSLETTER_TEMPLATE_SEEDS } from '../server/lib/newsletter-templates-data';
+import { CONTENT_TEMPLATE_SEEDS } from '../server/lib/content-templates-data';
 
 const db = new PrismaClient();
 
@@ -164,6 +165,27 @@ async function main() {
     });
   }
   console.info(`[seed] ${NEWSLETTER_TEMPLATE_SEEDS.length} templates de newsletter ITM HR créés`);
+
+  for (const seed of CONTENT_TEMPLATE_SEEDS) {
+    await db.contentTemplate.upsert({
+      where: { id: `ct_${seed.name}` },
+      update: {
+        name: seed.name,
+        description: seed.description,
+        type: seed.type,
+        category: seed.category,
+        thumbnail: seed.thumbnail,
+        body: seed.body,
+        isPremium: seed.isPremium,
+      },
+      create: {
+        id: `ct_${seed.name}`,
+        tenantId: workspace.id,
+        ...seed,
+      },
+    });
+  }
+  console.info(`[seed] ${CONTENT_TEMPLATE_SEEDS.length} templates de contenu (article & communication) créés`);
 }
 
 main()

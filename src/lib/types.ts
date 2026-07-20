@@ -135,6 +135,8 @@ export interface Article extends ContentItem {
 export interface Announcement extends ContentItem {
   type: 'announcement';
   urgency: 'info' | 'warning' | 'critical';
+  /** Type de communication (id issu de ANNOUNCEMENT_TYPES, ex. 'security', 'it-maintenance'). */
+  category: string;
   targetAudience: 'all' | 'tenant' | 'role';
   acknowledgedCount: number;
   totalRecipients: number;
@@ -186,6 +188,8 @@ export interface ContentTemplate {
   category: string;
   isPremium: boolean;
   usageCount: number;
+  /** Sections JSON (mêmes blocs que les newsletters) — pré-remplit le compositeur. */
+  body: string;
   createdAt: string;
 }
 
@@ -220,6 +224,53 @@ export interface DistributionChannel {
   subscriberCount: number;
   isActive: boolean;
   lastSentAt?: string;
+}
+
+// Connexion OAuth Meta (Page Facebook) — mapping public de GET /api/meta/connections.
+// Le token d'accès n'est jamais exposé par l'API.
+export interface MetaConnection {
+  id: string;
+  platform: string;
+  pageId: string;
+  pageName: string;
+  status: 'connected' | 'expired' | 'revoked' | 'error';
+  scopes: unknown;
+  tokenExpiresAt: string | null;
+  lastPublishAt: string | null;
+  lastError: string | null;
+  channelId: string | null;
+  createdAt: string;
+}
+
+// ─── Social Inbox (boîte de réception sociale) ───────────────────────────
+export interface SocialConversation {
+  id: string;
+  platform: string;
+  authorName: string;
+  authorAvatarUrl: string | null;
+  preview: string;
+  status: 'unresolved' | 'resolved';
+  unread: boolean;
+  lastMessageAt: string;
+  externalPostId: string;
+  contentId: string | null;
+  pageName: string;
+}
+
+export interface SocialMessage {
+  id: string;
+  direction: 'inbound' | 'outbound';
+  authorName: string;
+  body: string;
+  publishedAt: string;
+}
+
+export interface InboxSyncResult {
+  connections: number;
+  posts: number;
+  newConversations: number;
+  newMessages: number;
+  errors: { connectionId: string; reason: string }[];
 }
 
 export interface Subscriber {

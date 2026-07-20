@@ -2,7 +2,11 @@
 
 import { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { format } from 'date-fns';
+import { fr, enUS } from 'date-fns/locale';
+import { toast } from 'sonner';
 import { useTranslation } from '@/lib/i18n';
+import { useAppStore } from '@/lib/store';
 import { ViewShell } from '@/components/view-layout';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -11,11 +15,14 @@ import { cn } from '@/lib/utils';
 import {
   Bot,
   Check,
+  CheckCheck,
   EyeOff,
   Filter,
+  Loader2,
   MessageCircle,
   MoreVertical,
   Plus,
+  RefreshCw,
   Search,
   Sparkles,
   Unplug,
@@ -23,6 +30,14 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { DEFAULT_AI_PILOT_ID, getAiPilot, type AiPilotId } from '@/lib/ai-pilots';
+import {
+  useConversations,
+  useConversationMessages,
+  useReplyToConversation,
+  useSyncConversations,
+  useUpdateConversation,
+} from '@/hooks/use-conversations';
+import type { SocialConversation } from '@/lib/types';
 
 const AiPilotMascot = dynamic(
   () =>
@@ -42,82 +57,11 @@ const AiPilotGallery = dynamic(
 );
 
 type ConversationTab = 'unresolved' | 'unread' | 'all';
-type Platform = 'facebook' | 'google';
 type AiProvider = 'openai' | 'claude' | 'gemini';
 
-type MockConversation = {
-  id: string;
-  name: string;
-  avatarUrl: string;
-  preview: string;
-  timestamp: string;
-  platform: Platform;
-  status: 'unresolved' | 'resolved';
-  unread: boolean;
-};
-
-const MOCK_CONVERSATIONS: MockConversation[] = [
-  {
-    id: '1',
-    name: 'Samy Beatitud Mutoto',
-    avatarUrl: 'https://i.pravatar.cc/96?u=samy-beatitud',
-    preview: 'Bonjour, je souhaitais savoir si…',
-    timestamp: '16 août 2022 4:59',
-    platform: 'facebook',
-    status: 'unresolved',
-    unread: true,
-  },
-  {
-    id: '2',
-    name: 'Marie Dupont',
-    avatarUrl: 'https://i.pravatar.cc/96?u=marie-dupont',
-    preview: 'Merci pour votre réponse rapide !',
-    timestamp: '15 août 2022 18:22',
-    platform: 'facebook',
-    status: 'unresolved',
-    unread: true,
-  },
-  {
-    id: '3',
-    name: 'Jean Kouassi',
-    avatarUrl: 'https://i.pravatar.cc/96?u=jean-kouassi',
-    preview: 'Est-ce que la formation est encore…',
-    timestamp: '14 août 2022 11:05',
-    platform: 'google',
-    status: 'unresolved',
-    unread: false,
-  },
-  {
-    id: '4',
-    name: 'Amina Benali',
-    avatarUrl: 'https://i.pravatar.cc/96?u=amina-benali',
-    preview: 'Pouvez-vous me renvoyer le lien…',
-    timestamp: '13 août 2022 9:41',
-    platform: 'facebook',
-    status: 'resolved',
-    unread: false,
-  },
-  {
-    id: '5',
-    name: 'Lucas Martin',
-    avatarUrl: 'https://i.pravatar.cc/96?u=lucas-martin',
-    preview: 'Parfait, on se retrouve demain.',
-    timestamp: '12 août 2022 16:18',
-    platform: 'google',
-    status: 'unresolved',
-    unread: true,
-  },
-  {
-    id: '6',
-    name: 'Sophie Leroy',
-    avatarUrl: 'https://i.pravatar.cc/96?u=sophie-leroy',
-    preview: 'J’ai une question sur l’inscription…',
-    timestamp: '11 août 2022 8:03',
-    platform: 'facebook',
-    status: 'unresolved',
-    unread: false,
-  },
-];
+function formatTimestamp(iso: string, locale: 'fr' | 'en'): string {
+  return format(new Date(iso), 'd MMM yyyy HH:mm', { locale: locale === 'fr' ? fr : enUS });
+}
 
 function FacebookBadge({ className }: { className?: string }) {
   return (
@@ -166,11 +110,21 @@ function GoogleBadge({ className }: { className?: string }) {
   );
 }
 
-function PlatformBadge({ platform }: { platform: Platform }) {
-  return platform === 'facebook' ? (
-    <FacebookBadge className="absolute -bottom-0.5 -right-0.5" />
-  ) : (
-    <GoogleBadge className="absolute -bottom-0.5 -right-0.5" />
+function PlatformBadge({ platform }: { platform: string }) {
+  if (platform === 'facebook') {
+    return <FacebookBadge className="absolute -bottom-0.5 -right-0.5" />;
+  }
+  if (platform === 'google') {
+    return <GoogleBadge className="absolute -bottom-0.5 -right-0.5" />;
+  }
+  // Repli générique pour les plateformes futures (instagram, tiktok…).
+  return (
+    <span
+      className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#1D141F] text-white shadow-sm ring-2 ring-white"
+      aria-hidden
+    >
+      <MessageCircle className="h-2.5 w-2.5" />
+    </span>
   );
 }
 
@@ -184,7 +138,7 @@ function initials(name: string) {
 }
 
 export function ConversationView() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [tab, setTab] = useState<ConversationTab>('unresolved');
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -195,20 +149,25 @@ export function ConversationView() {
 
   const activePilot = getAiPilot(activePilotId);
 
-  const unreadCount = MOCK_CONVERSATIONS.filter((c) => c.unread).length;
+  const activeTenantId = useAppStore((s) => s.activeTenantId);
+  const { data: conversations = [], isLoading, isError } = useConversations(activeTenantId ?? '');
+  const updateConversation = useUpdateConversation();
+  const syncConversations = useSyncConversations();
+
+  const unreadCount = conversations.filter((c) => c.unread).length;
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return MOCK_CONVERSATIONS.filter((c) => {
+    return conversations.filter((c) => {
       if (tab === 'unresolved' && c.status !== 'unresolved') return false;
       if (tab === 'unread' && !c.unread) return false;
       if (!query) return true;
       return (
-        c.name.toLowerCase().includes(query) ||
+        c.authorName.toLowerCase().includes(query) ||
         c.preview.toLowerCase().includes(query)
       );
     });
-  }, [search, tab]);
+  }, [conversations, search, tab]);
 
   const tabs: { id: ConversationTab; label: string; showDot?: boolean }[] = [
     { id: 'unresolved', label: t.conversation.tabs.unresolved },
@@ -222,6 +181,27 @@ export function ConversationView() {
 
   const handleDisconnectAi = () => {
     setAiConnected(false);
+  };
+
+  const handleSelect = (conversation: SocialConversation) => {
+    setSelectedId(conversation.id);
+    if (conversation.unread && activeTenantId) {
+      updateConversation.mutate({ id: conversation.id, tenantId: activeTenantId, data: { unread: false } });
+    }
+  };
+
+  const handleSync = () => {
+    if (!activeTenantId || syncConversations.isPending) return;
+    syncConversations.mutate(activeTenantId, {
+      onSuccess: (result) => {
+        toast.success(
+          result.newMessages > 0
+            ? t.conversation.syncNew.replace('{count}', String(result.newMessages))
+            : t.conversation.syncDone
+        );
+      },
+      onError: () => toast.error(t.conversation.syncError),
+    });
   };
 
   return (
@@ -355,6 +335,16 @@ export function ConversationView() {
             >
               <Filter className="h-4 w-4" />
             </button>
+            <button
+              type="button"
+              onClick={handleSync}
+              disabled={syncConversations.isPending || !activeTenantId}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#E8ECEF] bg-white text-[#1D141F] hover:bg-[#F8FAFB] disabled:opacity-50"
+              aria-label={t.conversation.sync}
+              title={t.conversation.sync}
+            >
+              <RefreshCw className={cn('h-4 w-4', syncConversations.isPending && 'animate-spin')} />
+            </button>
           </div>
 
           {/* Tabs */}
@@ -398,7 +388,13 @@ export function ConversationView() {
 
           {/* List */}
           <div className="min-h-0 flex-1 overflow-y-auto">
-            {filtered.length === 0 ? (
+            {isLoading ? (
+              <p className="px-4 py-10 text-center text-sm text-[#8B939E]">{t.common.loading}...</p>
+            ) : isError ? (
+              <p className="px-4 py-10 text-center text-sm text-rose-600">
+                {t.conversation.loadError}
+              </p>
+            ) : filtered.length === 0 ? (
               <p className="px-4 py-10 text-center text-sm text-[#8B939E]">
                 {t.conversation.noResults}
               </p>
@@ -409,7 +405,7 @@ export function ConversationView() {
                   <button
                     key={conversation.id}
                     type="button"
-                    onClick={() => setSelectedId(conversation.id)}
+                    onClick={() => handleSelect(conversation)}
                     className={cn(
                       'flex w-full items-start gap-3 border-b border-[#EEF1F4] px-4 py-3.5 text-left transition-colors hover:bg-[#F8FAFB]',
                       isSelected && 'bg-[#F3F6F8]'
@@ -417,9 +413,11 @@ export function ConversationView() {
                   >
                     <div className="relative mt-0.5 shrink-0">
                       <Avatar className="h-11 w-11">
-                        <AvatarImage src={conversation.avatarUrl} alt={conversation.name} />
+                        {conversation.authorAvatarUrl && (
+                          <AvatarImage src={conversation.authorAvatarUrl} alt={conversation.authorName} />
+                        )}
                         <AvatarFallback className="bg-[#EEF4F8] text-xs font-semibold text-[#1D141F]">
-                          {initials(conversation.name)}
+                          {initials(conversation.authorName)}
                         </AvatarFallback>
                       </Avatar>
                       <PlatformBadge platform={conversation.platform} />
@@ -433,10 +431,10 @@ export function ConversationView() {
                             conversation.unread ? 'font-bold' : 'font-semibold'
                           )}
                         >
-                          {conversation.name}
+                          {conversation.authorName}
                         </p>
                         <span className="shrink-0 text-[11px] text-[#8B939E]">
-                          {conversation.timestamp}
+                          {formatTimestamp(conversation.lastMessageAt, locale)}
                         </span>
                       </div>
                       <div className="mt-1 flex items-center justify-between gap-2">
@@ -463,7 +461,7 @@ export function ConversationView() {
         <section className="hidden min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-[#E8ECEF] bg-white shadow-sm sm:flex">
           {selectedId ? (
             <SelectedConversationPanel
-              conversation={MOCK_CONVERSATIONS.find((c) => c.id === selectedId)!}
+              conversation={conversations.find((c) => c.id === selectedId)!}
               aiConnected={aiConnected}
               onOpenAiPanel={() => setLeftPane('ai')}
               activePilotId={activePilotId}
@@ -620,14 +618,19 @@ function SelectedConversationPanel({
   onOpenAiPanel,
   activePilotId,
 }: {
-  conversation: MockConversation;
+  conversation: SocialConversation;
   aiConnected: boolean;
   onOpenAiPanel: () => void;
   activePilotId: AiPilotId;
 }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [reply, setReply] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+
+  const activeTenantId = useAppStore((s) => s.activeTenantId);
+  const { data: messages, isLoading, isError } = useConversationMessages(conversation.id);
+  const replyMutation = useReplyToConversation();
+  const updateConversation = useUpdateConversation();
 
   const pilot = getAiPilot(activePilotId);
   const pilotCopy = t.conversation.ai.pilots[activePilotId];
@@ -645,20 +648,69 @@ function SelectedConversationPanel({
     }, 650);
   };
 
+  const handleSend = () => {
+    const message = reply.trim();
+    if (!message || replyMutation.isPending) return;
+    replyMutation.mutate(
+      { id: conversation.id, message },
+      {
+        onSuccess: () => {
+          setReply('');
+          toast.success(t.conversation.replySent);
+        },
+        onError: () => toast.error(t.conversation.replyError),
+      }
+    );
+  };
+
+  const handleToggleResolved = () => {
+    if (!activeTenantId) return;
+    const next = conversation.status === 'resolved' ? 'unresolved' : 'resolved';
+    updateConversation.mutate(
+      { id: conversation.id, tenantId: activeTenantId, data: { status: next } },
+      {
+        onSuccess: () =>
+          toast.success(
+            next === 'resolved' ? t.conversation.markedResolved : t.conversation.markedUnresolved
+          ),
+        onError: () => toast.error(t.conversation.updateError),
+      }
+    );
+  };
+
   return (
     <div className="flex h-full flex-col">
       <header className="flex items-center gap-3 border-b border-[#E8ECEF] px-5 py-4">
         <div className="relative shrink-0">
           <Avatar className="h-10 w-10">
-            <AvatarImage src={conversation.avatarUrl} alt={conversation.name} />
-            <AvatarFallback>{initials(conversation.name)}</AvatarFallback>
+            {conversation.authorAvatarUrl && (
+              <AvatarImage src={conversation.authorAvatarUrl} alt={conversation.authorName} />
+            )}
+            <AvatarFallback>{initials(conversation.authorName)}</AvatarFallback>
           </Avatar>
           <PlatformBadge platform={conversation.platform} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-[#1D141F]">{conversation.name}</p>
-          <p className="text-xs text-[#8B939E]">{conversation.timestamp}</p>
+          <p className="truncate text-sm font-semibold text-[#1D141F]">{conversation.authorName}</p>
+          <p className="text-xs text-[#8B939E]">
+            {conversation.pageName} · {formatTimestamp(conversation.lastMessageAt, locale)}
+          </p>
         </div>
+        <button
+          type="button"
+          onClick={handleToggleResolved}
+          disabled={updateConversation.isPending}
+          className={cn(
+            'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors',
+            conversation.status === 'resolved'
+              ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-600'
+              : 'border-[#E8ECEF] bg-white text-[#8B939E] hover:text-[#1D141F]'
+          )}
+          title={conversation.status === 'resolved' ? t.conversation.unresolve : t.conversation.resolve}
+        >
+          <CheckCheck className="h-3 w-3" />
+          {conversation.status === 'resolved' ? t.conversation.resolved : t.conversation.resolve}
+        </button>
         <span
           className={cn(
             'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold',
@@ -673,15 +725,43 @@ function SelectedConversationPanel({
       </header>
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5">
-        <div className="flex gap-3">
-          <Avatar className="h-8 w-8 shrink-0">
-            <AvatarImage src={conversation.avatarUrl} alt={conversation.name} />
-            <AvatarFallback>{initials(conversation.name)}</AvatarFallback>
-          </Avatar>
-          <div className="max-w-[75%] rounded-2xl rounded-tl-md bg-[#F3F6F8] px-3.5 py-2.5 text-sm text-[#1D141F]">
-            {conversation.preview}
-          </div>
-        </div>
+        {isLoading ? (
+          <p className="text-sm text-[#8B939E]">{t.common.loading}...</p>
+        ) : isError ? (
+          <p className="text-sm text-rose-600">{t.conversation.messagesLoadError}</p>
+        ) : (
+          (messages ?? []).map((message) =>
+            message.direction === 'outbound' ? (
+              <div key={message.id} className="flex justify-end gap-3">
+                <div className="max-w-[75%]">
+                  <div className="rounded-2xl rounded-tr-md bg-[#1D141F] px-3.5 py-2.5 text-sm text-white">
+                    {message.body}
+                  </div>
+                  <p className="mt-1 text-right text-[11px] text-[#8B939E]">
+                    {message.authorName} · {formatTimestamp(message.publishedAt, locale)}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div key={message.id} className="flex gap-3">
+                <Avatar className="h-8 w-8 shrink-0">
+                  {conversation.authorAvatarUrl && (
+                    <AvatarImage src={conversation.authorAvatarUrl} alt={message.authorName} />
+                  )}
+                  <AvatarFallback>{initials(message.authorName)}</AvatarFallback>
+                </Avatar>
+                <div className="max-w-[75%]">
+                  <div className="rounded-2xl rounded-tl-md bg-[#F3F6F8] px-3.5 py-2.5 text-sm text-[#1D141F]">
+                    {message.body}
+                  </div>
+                  <p className="mt-1 text-[11px] text-[#8B939E]">
+                    {formatTimestamp(message.publishedAt, locale)}
+                  </p>
+                </div>
+              </div>
+            )
+          )
+        )}
       </div>
 
       <footer className="border-t border-[#E8ECEF] bg-gradient-to-b from-white to-[#FAFBFC] px-4 py-3">
@@ -767,11 +847,16 @@ function SelectedConversationPanel({
 
           <Button
             type="button"
-            disabled={!reply.trim()}
+            onClick={handleSend}
+            disabled={!reply.trim() || replyMutation.isPending}
             className="h-auto min-h-[72px] w-[7.25rem] shrink-0 flex-col gap-1 rounded-2xl bg-[#1D141F] px-3 text-sm font-semibold text-[#E2F343] hover:opacity-90 disabled:opacity-40"
           >
             <span className="text-[10px] font-medium uppercase tracking-wide text-white/50">
-              {t.conversation.ai.send}
+              {replyMutation.isPending ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                t.conversation.ai.send
+              )}
             </span>
             <span className="text-base leading-none">→</span>
           </Button>

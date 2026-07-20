@@ -128,6 +128,11 @@ export async function create(req: Request, res: Response) {
       res.status(404).json({ error: 'Channel not found' });
       return;
     }
+    // Un canal social (Page Facebook) n'a pas d'abonnés email.
+    if (channel.type === 'social') {
+      res.status(400).json({ error: 'Social channels do not accept subscribers' });
+      return;
+    }
 
     const row = await db.subscriber.upsert({
       where: { tenantId_email: { tenantId, email: body.email } },

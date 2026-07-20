@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +21,7 @@ import { getSectionItems } from '@/lib/navigation';
 import { ChevronRight } from 'lucide-react';
 import { SubscribeWidgetGenerator } from '@/components/subscribe-widget-generator';
 import { SiteConnectSection } from '@/components/site-connect-section';
+import { MetaConnectSection } from '@/components/meta-connect-section';
 
 type SettingsTabId = 'compte' | 'acces' | 'integrations';
 
@@ -59,7 +61,12 @@ export function SettingsView() {
   const { locale, setLocale, t } = useTranslation();
   const { theme, setTheme } = useTheme();
   const setActivePage = useAppStore((s) => s.setActivePage);
-  const [activeTab, setActiveTab] = useState<SettingsTabId>('compte');
+  const searchParams = useSearchParams();
+  // Honore ?tab=integrations (ex. retour du dialogue OAuth Meta).
+  const [activeTab, setActiveTab] = useState<SettingsTabId>(() => {
+    const tab = searchParams.get('tab');
+    return tab === 'integrations' || tab === 'acces' || tab === 'compte' ? tab : 'compte';
+  });
   const currentUser = useAppStore((s) => s.currentUser);
 
   const adminItems = getSectionItems('administration');
@@ -225,6 +232,7 @@ export function SettingsView() {
           {activeTab === 'integrations' && (
             <div className="space-y-8">
               <SiteConnectSection />
+              <MetaConnectSection />
               <SubscribeWidgetGenerator />
             </div>
           )}

@@ -254,8 +254,11 @@ export function ChannelsPanel() {
               return (
                 <ViewDataTableRow
                   key={channel.id}
-                  className={cn(!isActive && 'opacity-60', 'cursor-pointer')}
+                  className={cn(!isActive && 'opacity-60', channel.type !== 'social' && 'cursor-pointer')}
                   onClick={() => {
+                    // Les canaux sociaux (Pages Facebook) n'ont pas d'abonnés
+                    // email : pas de drawer abonnés pour eux.
+                    if (channel.type === 'social') return;
                     setDetailChannel(channel);
                     setDrawerOpen(true);
                   }}

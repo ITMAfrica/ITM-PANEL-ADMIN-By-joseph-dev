@@ -21,6 +21,7 @@ export function TypeSelector({ selectedType, onTypeSelect, disabled = false }: T
     >
       {publicationTypes.map((ct, index) => {
         const isSelected = selectedType === ct.type;
+        const Icon = ct.icon;
         const label =
           ct.labelKey === 'social'
             ? t.createContent.social
@@ -36,13 +37,14 @@ export function TypeSelector({ selectedType, onTypeSelect, disabled = false }: T
               onClick={() => !disabled && onTypeSelect(ct.type)}
               disabled={disabled}
               className={cn(
-                'rounded-md px-2 py-1 text-sm font-medium transition-colors duration-150',
+                'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium transition-colors duration-150',
                 disabled ? 'cursor-default opacity-80' : 'cursor-pointer',
                 isSelected
                   ? 'bg-[#1D141F] text-white'
                   : 'text-[#5C6470] hover:bg-[#F5F7F9] hover:text-[#1D141F]'
               )}
             >
+              <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
               {label}
             </button>
           </div>

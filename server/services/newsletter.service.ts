@@ -268,8 +268,10 @@ async function dispatchItem(
 ): Promise<DispatchItemResult> {
   const htmlBody = await resolveNewsletterHtml(item, appUrl);
 
+  // Les canaux sociaux (Pages Facebook) ne sont pas des destinataires email :
+  // ils sont traités par social.service.ts, jamais ici.
   const channels = await db.distributionChannel.findMany({
-    where: { id: { in: item.channelIds }, isActive: true },
+    where: { id: { in: item.channelIds }, isActive: true, type: { not: 'social' } },
   });
   if (channels.length === 0) {
     return { recipients: 0, reason: 'no_active_channels' };

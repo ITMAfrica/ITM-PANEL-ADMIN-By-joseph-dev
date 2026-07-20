@@ -24,7 +24,7 @@ import { useAppStore } from '@/lib/store';
 import { useUsers } from '@/hooks/use-users';
 import { useDistributionChannels } from '@/hooks/use-distribution-channels';
 import type { PublicationComposerType } from '@/lib/publication-composer';
-import { publicationTypes } from '@/lib/publication-composer';
+import { publicationTypes, ANNOUNCEMENT_TYPES } from '@/lib/publication-composer';
 import { ComposerContentEditor } from './composer-content-editor';
 import type { TemplatePlaceholders } from './newsletter-template-picker';
 import type { ReactNode } from 'react';
@@ -132,6 +132,24 @@ export function CmsEditorFields({
                 <SelectItem value="info">{pc.urgencyInfo}</SelectItem>
                 <SelectItem value="warning">{pc.urgencyWarning}</SelectItem>
                 <SelectItem value="critical">{pc.urgencyCritical}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {type === 'announcement' && (
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-[#1D141F]">{pc.announcementTypeLabel}</Label>
+            <Select value={form.category} onValueChange={(v) => onChange('category', v)}>
+              <SelectTrigger className="h-10 border-[#E8ECEF] bg-[#FAFBFC] text-sm">
+                <SelectValue placeholder={pc.announcementTypePlaceholder} />
+              </SelectTrigger>
+              <SelectContent>
+                {ANNOUNCEMENT_TYPES.map((announcementType) => (
+                  <SelectItem key={announcementType.id} value={announcementType.id}>
+                    {pc.announcementTypes[announcementType.labelKey]}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

@@ -15,6 +15,7 @@ import {
   updateContent,
 } from '../services/content.service';
 import { sendNewsletterById } from '../services/newsletter.service';
+import { publishSocialById } from '../services/social.service';
 import { mapContent, mapContentDetail, toApprovedContentItem } from '../services/mappers/content.mapper';
 import { getUserTenantRole, isSuperAdmin, roleMeetsOrExceeds, userCanAccessTenant } from '../lib/tenant-access';
 import {
@@ -51,21 +52,32 @@ async function getAuthorizedContent(req: Request, id: string) {
 }
 
 /**
- * If the content is a newsletter that just became 'published', start dispatching
- * to subscribers in the background so the HTTP response is not blocked by SMTP.
+ * If the content just became 'published', start the matching dispatch in the
+ * background so the HTTP response is not blocked by SMTP / Graph API calls.
+ * - newsletter → envoi email aux abonnés (sendNewsletterById)
+ * - social     → publication sur les Pages Facebook (publishSocialById)
  * Returns true when a background dispatch was scheduled.
  */
 function scheduleNewsletterDispatch(
   row: { id: string; type: string; status: string },
   wasPublished: boolean
 ): boolean {
-  if (row.type !== 'newsletter' || row.status !== 'published' || wasPublished) {
+  if (row.status !== 'published' || wasPublished) {
     return false;
   }
-  void sendNewsletterById(row.id).catch((error) => {
-    console.error('[content] Newsletter auto-dispatch failed:', error);
-  });
-  return true;
+  if (row.type === 'newsletter') {
+    void sendNewsletterById(row.id).catch((error) => {
+      console.error('[content] Newsletter auto-dispatch failed:', error);
+    });
+    return true;
+  }
+  if (row.type === 'social') {
+    void publishSocialById(row.id).catch((error) => {
+      console.error('[content] Social auto-dispatch failed:', error);
+    });
+    return true;
+  }
+  return false;
 }
 
 /**

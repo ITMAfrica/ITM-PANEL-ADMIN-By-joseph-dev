@@ -92,6 +92,42 @@ export function isCmsType(type: PublicationComposerType): boolean {
   return type !== 'social';
 }
 
+type AnnouncementTypeKey =
+  keyof typeof import('@/lib/i18n/translations').translations.fr.publicationComposer.announcementTypes;
+
+export interface AnnouncementTypeConfig {
+  /** Stable id persisted in metadata.category. */
+  id: string;
+  labelKey: AnnouncementTypeKey;
+}
+
+/**
+ * Types de communication proposés dans le compositeur de publication.
+ * L'id est persisté (metadata.category) ; le libellé affiché vient de
+ * l'i18n (publicationComposer.announcementTypes[labelKey]).
+ */
+export const ANNOUNCEMENT_TYPES: AnnouncementTypeConfig[] = [
+  { id: 'general', labelKey: 'general' },
+  { id: 'security', labelKey: 'security' },
+  { id: 'it-maintenance', labelKey: 'itMaintenance' },
+  { id: 'system-outage', labelKey: 'systemOutage' },
+  { id: 'equipment-failure', labelKey: 'equipmentFailure' },
+  { id: 'software-update', labelKey: 'softwareUpdate' },
+  { id: 'leadership', labelKey: 'leadership' },
+  { id: 'results', labelKey: 'results' },
+  { id: 'hr', labelKey: 'hr' },
+  { id: 'policy', labelKey: 'policy' },
+  { id: 'event', labelKey: 'event' },
+  { id: 'people', labelKey: 'people' },
+  { id: 'training', labelKey: 'training' },
+  { id: 'facilities', labelKey: 'facilities' },
+  { id: 'health-safety', labelKey: 'healthSafety' },
+];
+
+export function getAnnouncementTypeLabelKey(id: string): AnnouncementTypeKey | null {
+  return ANNOUNCEMENT_TYPES.find((item) => item.id === id)?.labelKey ?? null;
+}
+
 export function getPageForType(_type: PublicationComposerType): PageId {
   return 'editorial-calendar';
 }

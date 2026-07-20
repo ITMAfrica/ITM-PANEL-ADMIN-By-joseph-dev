@@ -24,7 +24,7 @@ const sessionUserSchema = z.object({
   tenantName: z.string(),
 });
 
-function getSecret() {
+export function getSecret() {
   const secret = process.env.AUTH_SECRET;
   if (!secret) {
     console.error('[auth] AUTH_SECRET is not set in environment variables. ' +

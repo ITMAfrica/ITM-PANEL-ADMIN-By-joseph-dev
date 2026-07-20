@@ -25,6 +25,8 @@ import dashboardRoutes from './routes/dashboard';
 import { publicRouter, trackRouter } from './routes/tracking';
 import subscribeRoutes from './routes/subscribe';
 import widgetsRoutes from './routes/widgets';
+import metaRoutes from './routes/meta';
+import conversationsRoutes from './routes/conversations';
 
 // Public-facing endpoints (subscribe / tracking) — stricter, per-IP.
 const publicLimiter = rateLimit({
@@ -67,6 +69,8 @@ export function createApp() {
   app.use('/api/distribution-channels', distributionChannelsRoutes);
   app.use('/api/subscribers', subscribersRoutes);
   app.use('/api/widgets', widgetsRoutes);
+  app.use('/api/meta', metaRoutes);
+  app.use('/api/conversations', conversationsRoutes);
   app.use('/api/newsletters', newsletterRoutes);
   app.use('/api/templates', templatesRoutes);
   app.use('/api/newsletter-templates', newsletterTemplatesRoutes);

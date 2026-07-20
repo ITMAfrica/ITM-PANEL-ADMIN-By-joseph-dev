@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
@@ -68,7 +68,7 @@ const contentTypeConfig: Record<
   },
   announcement: {
     icon: Megaphone,
-    label: { fr: 'Annonce', en: 'Announcement' },
+    label: { fr: 'Communication', en: 'Communication' },
   },
   communique: {
     icon: Newspaper,
@@ -87,6 +87,11 @@ function parseNewsletterSections(body: string): NewsletterSection[] {
   } catch {
     return [];
   }
+}
+
+/** Newsletter, article et communication partagent l'éditeur de sections (body JSON). */
+function isSectionsContentType(type: ContentType): boolean {
+  return type === 'newsletter' || type === 'article' || type === 'announcement';
 }
 
 function MetaCard({
@@ -167,8 +172,12 @@ export function ContentDetailDrawer() {
   const authorName = content ? getUserName(content.authorId) : '';
   const authorInitials = content ? getUserInitials(content.authorId) : '';
 
-  const newsletterSections = useMemo(() => {
-    if (contentType !== 'newsletter' || !detail?.body) return [];
+  // Body JSON de sections (newsletter, article, communication) : le détail
+  // affiche le rendu blocs. Un body texte classique garde l'aperçu texte.
+  const isSectionsBody =
+    isSectionsContentType(contentType) && (detail?.body ?? '').trim().startsWith('[');
+  const contentSections = useMemo(() => {
+    if (!isSectionsContentType(contentType) || !detail?.body) return [];
     return parseNewsletterSections(detail.body);
   }, [contentType, detail?.body]);
 
@@ -180,12 +189,12 @@ export function ContentDetailDrawer() {
         : '';
 
   const preview = useMemo(() => {
-    if (contentType === 'newsletter') {
+    if (isSectionsBody) {
       return { text: '', imageUrl: null as string | null };
     }
     const source = detail?.body || content?.excerpt || '';
     return formatContentPreview(source);
-  }, [contentType, detail?.body, content?.excerpt]);
+  }, [isSectionsBody, detail?.body, content?.excerpt]);
 
   const wordCount =
     contentType !== 'newsletter' && preview.text
@@ -322,13 +331,13 @@ export function ContentDetailDrawer() {
 
         <div>
           <SectionLabel
-            icon={contentType === 'newsletter' ? Layers : Eye}
+            icon={isSectionsBody ? Layers : Eye}
             trailing={
-              contentType === 'newsletter' && newsletterSections.length > 0 ? (
+              isSectionsBody && contentSections.length > 0 ? (
                 <span className="rounded-full bg-[#1D141F] px-2 py-0.5 text-[10px] font-semibold text-[#E2F343]">
                   {t.contentDetail.sectionsCount.replace(
                     '{count}',
-                    String(newsletterSections.length)
+                    String(contentSections.length)
                   )}
                 </span>
               ) : wordCount > 0 ? (
@@ -341,7 +350,7 @@ export function ContentDetailDrawer() {
             {t.contentDetail.preview}
           </SectionLabel>
 
-          {contentType === 'newsletter' ? (
+          {isSectionsBody ? (
             isLoadingDetail ? (
               <div className="flex min-h-[140px] items-center justify-center gap-2 rounded-xl border border-[#E8ECEF] bg-[#F8FAFB] text-sm text-[#8B939E]">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -349,7 +358,7 @@ export function ContentDetailDrawer() {
               </div>
             ) : (
               <div className="overflow-hidden rounded-xl border border-[#E8ECEF] bg-white shadow-sm">
-                <NewsletterSectionsPreview sections={newsletterSections} />
+                <NewsletterSectionsPreview sections={contentSections} />
               </div>
             )
           ) : (

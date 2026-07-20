@@ -36,6 +36,7 @@ export async function list(req: Request, res: Response) {
         category: t.category,
         isPremium: t.isPremium,
         usageCount: t.usageCount,
+        body: t.body,
         createdAt: t.createdAt.toISOString(),
       }))
     );

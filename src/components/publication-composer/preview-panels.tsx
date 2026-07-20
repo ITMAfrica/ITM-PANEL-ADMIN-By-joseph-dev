@@ -6,7 +6,7 @@ import { Info, Monitor, Smartphone, ThumbsUp, MessageSquare, Share2, Mail, FileT
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n';
 import { FacebookIcon } from '@/components/social/facebook-icon';
-import { type PublicationComposerType } from '@/lib/publication-composer';
+import { type PublicationComposerType, getAnnouncementTypeLabelKey } from '@/lib/publication-composer';
 import { extractFirstImageUrl, extractPreviewImage, stripMediaMarkdown } from '@/lib/media-insert';
 import { useAppStore } from '@/lib/store';
 import { useUserLookup } from '@/hooks/use-user-lookup';
@@ -296,12 +296,14 @@ function ArticlePreview({
   scheduledAt,
   mode,
   locale,
+  templateSections,
 }: {
   form: CmsFormState;
   profileName: string;
   scheduledAt: Date;
   mode: PreviewMode;
   locale: 'fr' | 'en';
+  templateSections?: NewsletterSection[];
 }) {
   const { t } = useTranslation();
   const pc = t.publicationComposer;
@@ -344,16 +346,22 @@ function ArticlePreview({
             {form.title.trim() || cc.titlePlaceholder}
           </h3>
 
-          {previewSummary ? (
-            <p className="text-sm leading-relaxed text-[#5C6470]">{previewSummary}</p>
-          ) : null}
+          {templateSections && templateSections.length > 0 ? (
+            <NewsletterSectionsPreview sections={templateSections} />
+          ) : (
+            <>
+              {previewSummary ? (
+                <p className="text-sm leading-relaxed text-[#5C6470]">{previewSummary}</p>
+              ) : null}
 
-          {previewBody ? (
-            <p className="line-clamp-4 whitespace-pre-wrap text-sm leading-relaxed text-[#3A3A3A]">
-              {previewBody}
-            </p>
-          ) : hasContent ? null : (
-            <EmptyPreview label={pc.placeholderPreview} />
+              {previewBody ? (
+                <p className="line-clamp-4 whitespace-pre-wrap text-sm leading-relaxed text-[#3A3A3A]">
+                  {previewBody}
+                </p>
+              ) : hasContent ? null : (
+                <EmptyPreview label={pc.placeholderPreview} />
+              )}
+            </>
           )}
 
           <div className="flex items-center gap-2 border-t border-[#F0F2F5] pt-3 text-xs text-[#8B939E]">
@@ -378,12 +386,14 @@ function AnnouncementPreview({
   scheduledAt,
   mode,
   locale,
+  templateSections,
 }: {
   form: CmsFormState;
   profileName: string;
   scheduledAt: Date;
   mode: PreviewMode;
   locale: 'fr' | 'en';
+  templateSections?: NewsletterSection[];
 }) {
   const { t } = useTranslation();
   const pc = t.publicationComposer;
@@ -394,6 +404,10 @@ function AnnouncementPreview({
     profileName
   );
   const urgency = URGENCY_STYLES[form.urgency];
+  const categoryLabelKey = form.category ? getAnnouncementTypeLabelKey(form.category) : null;
+  const categoryLabel = categoryLabelKey
+    ? pc.announcementTypes[categoryLabelKey]
+    : form.category;
   const dateLocale = locale === 'fr' ? fr : enUS;
   const dateLabel = format(
     scheduledAt,
@@ -406,11 +420,16 @@ function AnnouncementPreview({
       <div className="overflow-hidden rounded-lg border border-[#E8ECEF] bg-white shadow-sm">
         <div className={cn('h-1.5 w-full', urgency.bar)} />
         <div className="flex items-center gap-2 px-4 pt-3">
-          <Megaphone className={cn('h-4 w-4', urgency.tone)} />
+          <Megaphone className={cn('h-4 w-4 shrink-0', urgency.tone)} />
           <span className={cn('text-xs font-semibold uppercase tracking-wide', urgency.tone)}>
             {pc.previewAnnouncement}
           </span>
-          <span className={cn('ml-auto rounded-full px-2 py-0.5 text-[11px] font-semibold', urgency.badge)}>
+          {categoryLabel && (
+            <span className="ml-auto max-w-[45%] truncate rounded-full bg-[#F0F2F5] px-2 py-0.5 text-[11px] font-semibold text-[#5C6470]">
+              {categoryLabel}
+            </span>
+          )}
+          <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-semibold', urgency.badge, !categoryLabel && 'ml-auto')}>
             {pc.previewUrgency}: {urgency.label}
           </span>
         </div>
@@ -420,23 +439,29 @@ function AnnouncementPreview({
             {form.title.trim() || cc.titlePlaceholder}
           </h3>
 
-          {previewSummary ? (
-            <p className="text-sm leading-relaxed text-[#5C6470]">{previewSummary}</p>
-          ) : null}
+          {templateSections && templateSections.length > 0 ? (
+            <NewsletterSectionsPreview sections={templateSections} />
+          ) : (
+            <>
+              {previewSummary ? (
+                <p className="text-sm leading-relaxed text-[#5C6470]">{previewSummary}</p>
+              ) : null}
 
-          {previewBody ? (
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-[#3A3A3A]">
-              {previewBody}
-            </p>
-          ) : hasContent ? null : (
-            <EmptyPreview label={pc.placeholderPreview} />
+              {previewBody ? (
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-[#3A3A3A]">
+                  {previewBody}
+                </p>
+              ) : hasContent ? null : (
+                <EmptyPreview label={pc.placeholderPreview} />
+              )}
+
+              {previewImage ? (
+                <div className="overflow-hidden rounded-lg border border-[#E8ECEF]">
+                  <PreviewClickableImage src={previewImage} className="max-h-48 w-full cursor-zoom-in object-cover" />
+                </div>
+              ) : null}
+            </>
           )}
-
-          {previewImage ? (
-            <div className="overflow-hidden rounded-lg border border-[#E8ECEF]">
-              <PreviewClickableImage src={previewImage} className="max-h-48 w-full cursor-zoom-in object-cover" />
-            </div>
-          ) : null}
 
           <p className="flex items-center gap-1.5 text-xs text-[#8B939E]">
             <CalendarClock className="h-3.5 w-3.5" />
@@ -596,6 +621,7 @@ export function PreviewPanels({
                 scheduledAt={scheduledAt}
                 mode={previewMode}
                 locale={locale}
+                templateSections={templateSections}
               />
             ) : type === 'announcement' ? (
               <AnnouncementPreview
@@ -604,6 +630,7 @@ export function PreviewPanels({
                 scheduledAt={scheduledAt}
                 mode={previewMode}
                 locale={locale}
+                templateSections={templateSections}
               />
             ) : (
               <CommuniquePreview

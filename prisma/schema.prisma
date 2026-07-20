@@ -91,6 +91,8 @@ model Workspace {
   campaigns            Campaign[]
   mediaItems           MediaItem[]
   distributionChannels DistributionChannel[]
+  socialConnections    SocialConnection[]
+  socialConversations  SocialConversation[]
   widgetTokens          WidgetToken[]
   contentTemplates     ContentTemplate[]
   newsletterTemplates  NewsletterTemplate[]
@@ -341,6 +343,7 @@ model Content {
   events       ContentEvent[]
   sends        NewsletterSend[]
   channelLinks ContentChannel[]
+  socialConversations SocialConversation[]
 
   @@index([siteId])
   @@index([tenantId])
@@ -420,15 +423,103 @@ model DistributionChannel {
   isActive        Boolean   @default(true)
   tenantId        String
   lastSentAt      DateTime?
+  // Canal social : connexion externe (Page Facebook…) portant le token.
+  // Null pour les canaux classiques (email, web…). SetNull si la connexion est supprimée.
+  socialConnectionId String?
   createdAt       DateTime  @default(now())
 
-  workspace       Workspace            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  sources         SubscriptionSource[]
-  subscriptions   Subscription[]
-  contentChannels ContentChannel[]
-  widgetTokens    WidgetToken[]
+  workspace        Workspace            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  socialConnection SocialConnection?    @relation(fields: [socialConnectionId], references: [id], onDelete: SetNull)
+  sources          SubscriptionSource[]
+  subscriptions    Subscription[]
+  contentChannels  ContentChannel[]
+  widgetTokens     WidgetToken[]
 
   @@index([tenantId])
+  @@index([socialConnectionId])
+}
+
+// Connexion OAuth à une plateforme sociale (v1 : Page Facebook uniquement).
+// Porte les secrets (chiffrés AES-256-GCM côté applicatif) — ne JAMAIS exposer
+// pageAccessToken dans une réponse API. Le canal associé (DistributionChannel)
+// n'est qu'un pointeur affichable dans l'UI.
+model SocialConnection {
+  id              String    @id @default(cuid())
+  tenantId        String
+  platform        String    @default("facebook")
+  pageId          String
+  pageName        String
+  // Token chiffré au format versionné "v1:iv:tag:ciphertext" (server/lib/crypto.ts).
+  pageAccessToken String
+  tokenExpiresAt  DateTime?
+  scopes          Json      @default("[]")
+  status          String    @default("connected") // connected | expired | revoked | error
+  connectedBy     String?
+  lastPublishAt   DateTime?
+  lastError       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  workspace Workspace            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  channels  DistributionChannel[]
+  conversations SocialConversation[]
+
+  // Dernière synchro des commentaires (inbox) — throttle du polling.
+  lastInboxSyncAt DateTime?
+
+  @@unique([tenantId, platform, pageId])
+  @@index([tenantId])
+}
+
+// Boîte de réception sociale : un fil = un commentaire racine sur un post
+// publié (v1 : Facebook). Modèle volontairement générique (platform,
+// externalThreadId) pour absorber Instagram/TikTok sans migration.
+model SocialConversation {
+  id               String   @id @default(cuid())
+  tenantId         String
+  connectionId     String
+  platform         String   @default("facebook")
+  // Id du commentaire racine sur la plateforme (= le fil).
+  externalThreadId String
+  externalPostId   String
+  // Notre Content si le post vient du panel (null = post externe).
+  contentId        String?
+  authorName       String
+  authorExternalId String?
+  preview          String   @default("")
+  status           String   @default("unresolved") // unresolved | resolved
+  unread           Boolean  @default(true)
+  lastMessageAt    DateTime @default(now())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  workspace  Workspace        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  connection SocialConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  content    Content?         @relation(fields: [contentId], references: [id], onDelete: SetNull)
+  messages   SocialMessage[]
+
+  @@unique([connectionId, externalThreadId])
+  @@index([tenantId, status, lastMessageAt])
+  @@index([tenantId, platform])
+  @@index([connectionId])
+}
+
+model SocialMessage {
+  id               String   @id @default(cuid())
+  conversationId   String
+  // Id du commentaire sur la plateforme (dédoublonnage via l'unique ci-dessous).
+  externalId       String
+  direction        String // inbound (utilisateur) | outbound (notre Page)
+  authorName       String
+  authorExternalId String?
+  body             String
+  publishedAt      DateTime
+  createdAt        DateTime @default(now())
+
+  conversation SocialConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, externalId])
+  @@index([conversationId, publishedAt])
 }
 
 model Subscriber {

@@ -13,7 +13,6 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
-  Gem,
   ImageIcon,
   Mail,
   Globe,
@@ -46,7 +45,6 @@ import { useTranslation } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import {
   ViewContentSurface,
-  ViewOutlineButton,
   ViewSubNav,
   ViewTabPanel,
   ViewToolbar,
@@ -56,7 +54,6 @@ import {
   CalendarEventBlock,
   CalendarNowLine,
   CalendarSlot,
-  EditorialClockTrailing,
 } from './calendar-components';
 import {
   type ChannelFilter,
@@ -96,7 +93,7 @@ export function EditorialSubNav({
   activeTab: EditorialTab;
   onTabChange: (tab: EditorialTab) => void;
 }) {
-  const { t, locale } = useTranslation();
+  const { t } = useTranslation();
 
   const tabs = [
     { id: 'calendar' as const, label: t.editorialCalendar.tabs.calendar },
@@ -113,7 +110,6 @@ export function EditorialSubNav({
       tabs={tabs}
       activeTab={activeTab}
       onTabChange={onTabChange}
-      trailing={<EditorialClockTrailing locale={locale} />}
     />
   );
 }
@@ -245,9 +241,6 @@ export function CalendarToolbar({
           <SelectItem value="video">{locale === 'fr' ? 'Vidéos' : 'Videos'}</SelectItem>
         </SelectContent>
       </Select>
-      <ViewOutlineButton icon={<Gem className="h-3.5 w-3.5 text-[#C9A800]" fill="#E2F343" />}>
-        {t.editorialCalendar.generateView}
-      </ViewOutlineButton>
     </ViewToolbar>
   );
 }

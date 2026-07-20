@@ -235,12 +235,12 @@ export function MainApp() {
       <TopBar />
 
       {/* Body: sidebar (home only) + scrollable content below top bar */}
-      <div className="flex pt-18 min-h-screen overflow-x-hidden">
+      <div className="flex pt-24 min-h-screen overflow-x-hidden">
         {showSidebar && <AppSidebar />}
 
         <div
           className={cn(
-            'flex flex-col min-h-[calc(100vh-4.5rem)] w-full transition-all duration-300',
+            'flex flex-col min-h-[calc(100vh-6rem)] w-full transition-all duration-300',
             showSidebar && (sidebarCollapsed
               ? 'lg:w-[calc(100vw-68px)] lg:ml-[68px]'
               : 'lg:w-[calc(100vw-260px)] lg:ml-[260px]')

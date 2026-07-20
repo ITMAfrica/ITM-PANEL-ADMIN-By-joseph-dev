@@ -14,7 +14,7 @@ export function PageTransition({ pageId, children }: PageTransitionProps) {
       {/* Progress bar — lives outside the AnimatePresence to avoid key conflicts */}
       <motion.div
         key={`bar-${pageId}`}
-        className="fixed top-18 left-0 right-0 h-0.5 z-60 rounded-r-full pointer-events-none"
+        className="fixed top-24 left-0 right-0 h-0.5 z-60 rounded-r-full pointer-events-none"
         style={{
           background: 'linear-gradient(90deg, #a78bfa, #ec4899, #fb923c)',
         }}

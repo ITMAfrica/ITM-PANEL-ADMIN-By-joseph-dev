@@ -148,6 +148,28 @@ export const channelCreateSchema = z.object({
   icon: z.string().optional().default('mail'),
 });
 
+// Query params renvoyés par Meta sur GET /api/meta/oauth/callback.
+export const metaOAuthCallbackSchema = z.object({
+  code: z.string().min(1).optional(),
+  state: z.string().min(1).optional(),
+  error: z.string().optional(),
+  error_reason: z.string().optional(),
+  error_description: z.string().optional(),
+});
+
+export const conversationReplySchema = z.object({
+  message: z.string().trim().min(1, 'Message is required').max(8000),
+});
+
+export const conversationUpdateSchema = z
+  .object({
+    status: z.enum(['unresolved', 'resolved']).optional(),
+    unread: z.boolean().optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'At least one field is required',
+  });
+
 export const channelUpdateSchema = z
   .object({
     isActive: z.boolean().optional(),

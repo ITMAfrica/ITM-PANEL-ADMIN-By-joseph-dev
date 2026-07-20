@@ -1,17 +1,5 @@
+import { deriveExcerpt } from '../../lib/excerpt';
 import { parseMetadata, parseTags } from './json';
-
-function deriveExcerpt(body: string): string {
-  return body
-    .replace(/!\[[^\]]*]\([^)]+\)/g, '')
-    .replace(/\[[^\]]+]\([^)]+\)/g, '$1')
-    .replace(/[#*_>]/g, '')
-    .replace(/\n{2,}/g, '\n')
-    .trim()
-    .split('\n')
-    .slice(0, 2)
-    .join(' ')
-    .slice(0, 200);
-}
 
 type ContentStatus = 'draft' | 'review' | 'approved' | 'scheduled' | 'published' | 'archived';
 type ContentType = 'newsletter' | 'article' | 'announcement' | 'communique' | 'campaign';
@@ -60,6 +48,7 @@ export interface Article extends ContentItem {
 export interface Announcement extends ContentItem {
   type: 'announcement';
   urgency: 'info' | 'warning' | 'critical';
+  category: string;
   targetAudience: 'all' | 'tenant' | 'role';
   acknowledgedCount: number;
   totalRecipients: number;
@@ -152,6 +141,7 @@ export function toAnnouncement(row: DbContent): Announcement {
     ...base,
     type: 'announcement',
     urgency: (meta.urgency as Announcement['urgency']) ?? 'info',
+    category: (meta.category as string) ?? '',
     targetAudience: (meta.targetAudience as Announcement['targetAudience']) ?? 'all',
     acknowledgedCount: (meta.acknowledgedCount as number) ?? 0,
     totalRecipients: (meta.totalRecipients as number) ?? 0,

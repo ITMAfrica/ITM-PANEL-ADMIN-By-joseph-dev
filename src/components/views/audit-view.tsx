@@ -51,7 +51,7 @@ const actionColors: Record<string, { bg: string; text: string; border: string }>
 const entityTypeLabels: Record<string, string> = {
   newsletter: 'Newsletter',
   article: 'Article',
-  announcement: 'Annonce',
+  announcement: 'Communication',
   user: 'Utilisateur',
   campaign: 'Campagne',
   media: 'Média',

@@ -1,6 +1,7 @@
 import type { ContentPriority, ContentStatus, ContentType, Prisma } from '@prisma/client';
 import { db } from '../lib/prisma';
 import { CONTENT_EVENT_TYPES } from '../lib/analytics-events';
+import { deriveExcerpt } from '../lib/excerpt';
 import { parseMetadata, parseTags } from './mappers/json';
 
 export interface PublicContentItem {
@@ -17,19 +18,6 @@ export interface PublicContentItem {
   openRate: number;
   publishedAt: string | null;
   metadata: Record<string, unknown>;
-}
-
-function deriveExcerpt(body: string): string {
-  return body
-    .replace(/!\[[^\]]*]\([^)]+\)/g, '')
-    .replace(/\[[^\]]+]\([^)]+\)/g, '$1')
-    .replace(/[#*_>]/g, '')
-    .replace(/\n{2,}/g, '\n')
-    .trim()
-    .split('\n')
-    .slice(0, 2)
-    .join(' ')
-    .slice(0, 200);
 }
 
 function toPublicContent(content: {

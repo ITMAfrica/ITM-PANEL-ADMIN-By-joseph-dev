@@ -8,9 +8,11 @@ import { locateRequest } from '../lib/geo';
 async function findTenantForChannel(channelId: string): Promise<string | null> {
   const channel = await db.distributionChannel.findUnique({
     where: { id: channelId },
-    select: { tenantId: true },
+    select: { tenantId: true, type: true },
   });
-  return channel?.tenantId ?? null;
+  // Un canal social (Page Facebook) ne supporte pas l'inscription email.
+  if (!channel || channel.type === 'social') return null;
+  return channel.tenantId;
 }
 
 async function resolveToken(

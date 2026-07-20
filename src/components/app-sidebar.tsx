@@ -355,7 +355,7 @@ export function AppSidebar() {
         {/* Desktop sidebar — below fixed top bar */}
         <aside
           className={cn(
-            'hidden lg:flex flex-col fixed left-0 top-18 bottom-0 z-40 transition-all duration-300 bg-sidebar',
+            'hidden lg:flex flex-col fixed left-0 top-24 bottom-0 z-40 transition-all duration-300 bg-sidebar',
             sidebarCollapsed ? 'w-[68px]' : 'w-[260px]'
           )}
         >
@@ -378,7 +378,7 @@ export function AppSidebar() {
                 animate={{ x: 0 }}
                 exit={{ x: -280 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                className="lg:hidden fixed left-0 top-18 bottom-0 w-[280px] z-50 shadow-2xl bg-sidebar"
+                className="lg:hidden fixed left-0 top-24 bottom-0 w-[280px] z-50 shadow-2xl bg-sidebar"
               >
                 <button
                   onClick={() => setMobileSidebarOpen(false)}

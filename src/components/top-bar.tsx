@@ -194,7 +194,7 @@ export function TopBar() {
 
   return (
     <TooltipProvider delayDuration={200}>
-    <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between h-18 px-3 lg:px-4 bg-topbar text-topbar-foreground shadow-md">
+    <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between h-24 px-3 lg:px-4 bg-topbar text-topbar-foreground shadow-md">
       {/* Data loading indicator - thin bar at top */}
       <AnimatePresence>
         {isApiLoading && (
@@ -251,7 +251,7 @@ export function TopBar() {
 
       {/* Center section navigation — absolutely centered so side actions never collide */}
       <nav
-        className="pointer-events-none hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 items-center justify-center gap-3 xl:gap-5 2xl:gap-8 max-w-[min(100%,calc(100vw-8rem))] px-1.5 min-w-0 overflow-hidden"
+        className="pointer-events-none hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 items-center justify-center gap-8 xl:gap-10 2xl:gap-12 max-w-[min(100%,calc(100vw-8rem))] px-1.5 min-w-0 overflow-hidden"
         aria-label={getPageName(activePage)}
       >
         {HEADER_SECTION_NAV.map(({ key, defaultPage }) => {
@@ -272,7 +272,7 @@ export function TopBar() {
                     aria-label={getSectionLabel(key)}
                   >
                     <AnimatedSectionNavIcon sectionKey={key} isActive={isActive} />
-                    <span className="inline whitespace-nowrap">{getSectionLabel(key)}</span>
+                    <span className="hidden xl:inline whitespace-nowrap">{getSectionLabel(key)}</span>
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>{getSectionLabel(key)}</TooltipContent>
@@ -299,7 +299,7 @@ export function TopBar() {
                           ) : (
                             <Icon className="h-5 w-5" />
                           )}
-                          <span className="inline whitespace-nowrap">{getPageName(pageId)}</span>
+                          <span className="hidden xl:inline whitespace-nowrap">{getPageName(pageId)}</span>
                         </button>
                       </TooltipTrigger>
                       <TooltipContent>{getPageName(pageId)}</TooltipContent>

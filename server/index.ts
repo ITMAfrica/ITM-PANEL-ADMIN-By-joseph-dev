@@ -42,6 +42,18 @@ if (!isAzureConfigured()) {
   process.exit(1);
 }
 
+// La publication Meta est optionnelle : pas de FATAL, mais on signale une
+// configuration incohérente (provider réel sans identifiants d\'app).
+if (
+  process.env.META_PROVIDER === 'graph-api' &&
+  (!process.env.META_APP_ID || !process.env.META_APP_SECRET)
+) {
+  console.warn(
+    'WARN: META_PROVIDER=graph-api mais META_APP_ID / META_APP_SECRET sont absents — ' +
+      'la connexion OAuth et la publication Facebook échoueront.'
+  );
+}
+
 const app = createApp();
 
 app.listen(PORT, HOST, () => {

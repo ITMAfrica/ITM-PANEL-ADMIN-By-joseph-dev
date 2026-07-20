@@ -150,7 +150,7 @@ export function ReportsAnalyticsPanels({
   const contentByTypeData = useMemo(() => [
     { name: 'Newsletters', value: tenantContent.newsletters.length },
     { name: 'Articles', value: tenantContent.articles.length },
-    { name: 'Annonces', value: tenantContent.announcements.length },
+    { name: 'Communications', value: tenantContent.announcements.length },
     { name: 'Campagnes', value: tenantContent.campaigns.length },
   ], [tenantContent]);
 
@@ -176,7 +176,7 @@ export function ReportsAnalyticsPanels({
         return [
           ...tenantContent.newsletters.map(n => ({ Titre: n.title, Type: 'Newsletter', Statut: n.status, Auteur: getUserName(n.authorId), 'Date création': n.createdAt })),
           ...tenantContent.articles.map(a => ({ Titre: a.title, Type: 'Article', Statut: a.status, Auteur: getUserName(a.authorId), 'Date création': a.createdAt })),
-          ...tenantContent.announcements.map(a => ({ Titre: a.title, Type: 'Annonce', Statut: a.status, Auteur: getUserName(a.authorId), 'Date création': a.createdAt })),
+          ...tenantContent.announcements.map(a => ({ Titre: a.title, Type: 'Communication', Statut: a.status, Auteur: getUserName(a.authorId), 'Date création': a.createdAt })),
         ];
       case 'campaigns':
         return tenantContent.campaigns.map(c => ({

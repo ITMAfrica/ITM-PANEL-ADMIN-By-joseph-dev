@@ -1,6 +1,6 @@
 'use client';
 
-import { startTransition, useCallback, useEffect, useRef, useState } from 'react';
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -26,18 +26,27 @@ import {
   DEFAULT_PLACEHOLDERS,
   type TemplatePlaceholders,
 } from './newsletter-template-picker';
+import { ContentTemplatePicker } from './content-template-picker';
 import { NewsletterSectionsEditor } from './newsletter-sections-editor';
 import { NewsletterComposerSectionBreak } from './newsletter-composer-section-break';
 import { NewsletterEmbedDialog } from '@/components/newsletter-embed-dialog';
-import type { NewsletterSection, NewsletterTemplate } from '@/lib/types';
+import type { ContentTemplate, NewsletterSection, NewsletterTemplate } from '@/lib/types';
 import { SocialEditorPanel } from './social-editor-panel';
 import { PreviewPanels } from './preview-panels';
 import { ComposerFooter } from './composer-footer';
 import { ComposerCloseButton } from './composer-close-button';
 import { useContentById, useCreateContent, useUpdateContent } from '@/hooks/use-content';
+import { useDistributionChannels } from '@/hooks/use-distribution-channels';
 import { Loader2 } from 'lucide-react';
 
 const DEFAULT_PROFILE_NAME = 'Agriculture 243';
+
+/** Types CMS composés par sections (même approche que la newsletter). */
+type SectionsComposerType = 'newsletter' | 'article' | 'announcement';
+
+function usesSections(type: string): type is SectionsComposerType {
+  return type === 'newsletter' || type === 'article' || type === 'announcement';
+}
 
 function defaultNewsletterSections(): NewsletterSection[] {
   return [
@@ -45,6 +54,28 @@ function defaultNewsletterSections(): NewsletterSection[] {
     { type: 'footer', text: '' },
   ];
 }
+
+/** Article : hero de couverture + premier bloc texte. */
+function defaultArticleSections(): NewsletterSection[] {
+  return [
+    { type: 'hero', title: '', subtitle: '', imageUrl: '', label: '' },
+    { type: 'article', title: '', imageUrl: '', text: '' },
+  ];
+}
+
+/** Communication : hero d'en-tête + bloc de message. */
+function defaultAnnouncementSections(): NewsletterSection[] {
+  return [
+    { type: 'hero', title: '', subtitle: '', imageUrl: '', label: '' },
+    { type: 'article', title: '', imageUrl: '', text: '' },
+  ];
+}
+
+const emptySectionsByType = (): Record<SectionsComposerType, NewsletterSection[]> => ({
+  newsletter: defaultNewsletterSections(),
+  article: defaultArticleSections(),
+  announcement: defaultAnnouncementSections(),
+});
 
 type CmsComposerType = Exclude<PublicationComposerType, 'social'>;
 
@@ -113,6 +144,17 @@ export function CreatePublicationComposer({
     if (isComposerScheduledAtValid(date)) setScheduledAtState(date);
   }, []);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  // Pages Facebook (canaux de type 'social') ciblées par un post social.
+  const { data: allChannels } = useDistributionChannels(activeTenantId ?? '');
+  const socialChannels = useMemo(
+    () => (allChannels ?? []).filter((c) => c.type === 'social' && c.isActive),
+    [allChannels]
+  );
+  const [selectedSocialChannelIds, setSelectedSocialChannelIds] = useState<string[]>(
+    initialChannelIds ?? []
+  );
+  const socialProfileName =
+    socialChannels.find((c) => selectedSocialChannelIds.includes(c.id))?.name ?? profileName;
   const loadedEditIdRef = useRef<string | undefined>(undefined);
   const editErrorHandledRef = useRef(false);
   const isEditMode = !!editContentId;
@@ -120,7 +162,16 @@ export function CreatePublicationComposer({
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [templatePlaceholders, setTemplatePlaceholders] =
     useState<TemplatePlaceholders>(DEFAULT_PLACEHOLDERS);
-  const [templateSections, setTemplateSections] = useState<NewsletterSection[]>([]);
+  // Sections conservées par type (comme cmsFormsByType) : newsletter, article, communication.
+  const [sectionsByType, setSectionsByType] = useState(emptySectionsByType);
+  const templateSections = usesSections(selectedType) ? sectionsByType[selectedType] : [];
+  const setTemplateSections = useCallback(
+    (sections: NewsletterSection[]) => {
+      if (!usesSections(selectedType)) return;
+      setSectionsByType((prev) => ({ ...prev, [selectedType]: sections }));
+    },
+    [selectedType]
+  );
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
 
   const {
@@ -141,11 +192,7 @@ export function CreatePublicationComposer({
     setCalendarOpen(false);
     setSelectedTemplateId(null);
     setTemplatePlaceholders(DEFAULT_PLACEHOLDERS);
-    setTemplateSections(
-      (initialType ?? DEFAULT_PUBLICATION_COMPOSER_TYPE) === 'newsletter'
-        ? defaultNewsletterSections()
-        : []
-    );
+    setSectionsByType(emptySectionsByType());
     loadedEditIdRef.current = undefined;
   }, [initialType, initialScheduledAtIso, seedChannelIdsKey]);
 
@@ -166,7 +213,7 @@ export function CreatePublicationComposer({
           ? (content as { urgency?: string }).urgency
           : undefined,
       category:
-        content.type === 'article' && 'category' in content
+        (content.type === 'article' || content.type === 'announcement') && 'category' in content
           ? (content as { category?: string }).category
           : undefined,
     });
@@ -174,13 +221,20 @@ export function CreatePublicationComposer({
     if (!seed) return;
 
     setSelectedType(seed.type);
-    if (content.type === 'newsletter' && content.body) {
+    if (usesSections(content.type) && content.body) {
+      let sections: NewsletterSection[] = [];
       try {
         const parsed = JSON.parse(content.body);
-        setTemplateSections(Array.isArray(parsed) ? parsed : []);
+        if (Array.isArray(parsed)) sections = parsed as NewsletterSection[];
       } catch {
-        setTemplateSections([]);
+        sections = [];
       }
+      // Rétro-compatibilité : un ancien contenu au body texte (avant l'éditeur
+      // de sections) redevient éditable via une section "article".
+      if (sections.length === 0 && content.type !== 'newsletter' && content.body.trim()) {
+        sections = [{ type: 'article', title: '', imageUrl: '', text: content.body }];
+      }
+      setSectionsByType({ ...emptySectionsByType(), [content.type]: sections });
     }
     setCmsFormsByType({
       ...emptyCmsFormsByType(),
@@ -202,8 +256,8 @@ export function CreatePublicationComposer({
     const channelIds = seedChannelIdsKey ? seedChannelIdsKey.split(',') : [];
     if (initialType) {
       setSelectedType(initialType);
-      if (initialType === 'newsletter') setTemplateSections(defaultNewsletterSections());
     }
+    setSectionsByType(emptySectionsByType());
     if (initialScheduledAtIso) {
       setScheduledAtState(parseComposerScheduledAt(initialScheduledAtIso));
     }
@@ -222,7 +276,9 @@ export function CreatePublicationComposer({
   const wasOpenRef = useRef(false);
   useEffect(() => {
     if (open && !wasOpenRef.current) {
-      handleDialogOpen();
+      startTransition(() => {
+        handleDialogOpen();
+      });
     }
     wasOpenRef.current = open;
   }, [open, handleDialogOpen]);
@@ -319,11 +375,17 @@ export function CreatePublicationComposer({
     [updateCurrentCmsForm]
   );
 
+  const handleToggleSocialChannel = useCallback((channelId: string) => {
+    setSelectedSocialChannelIds((prev) =>
+      prev.includes(channelId) ? prev.filter((id) => id !== channelId) : [...prev, channelId]
+    );
+  }, []);
+
   const handleTypeSelect = useCallback((type: PublicationComposerType) => {
     setSelectedType(type);
     setSelectedTemplateId(null);
     setTemplatePlaceholders(DEFAULT_PLACEHOLDERS);
-    setTemplateSections(type === 'newsletter' ? defaultNewsletterSections() : []);
+    // Les sections sont conservées par type (sectionsByType) — pas de reset ici.
   }, []);
 
   const validate = useCallback(
@@ -338,6 +400,13 @@ export function CreatePublicationComposer({
           extractMediaAttachments(socialText).length === 0
         ) {
           toast.error(pc.contentRequired);
+          return false;
+        }
+        // Si des Pages sont connectées, une publication (hors brouillon) doit
+        // en cibler au moins une — sinon elle serait enregistrée sans jamais
+        // partir sur Facebook.
+        if (mode !== 'draft' && socialChannels.length > 0 && selectedSocialChannelIds.length === 0) {
+          toast.error(pc.channelRequired);
           return false;
         }
         return true;
@@ -367,6 +436,8 @@ export function CreatePublicationComposer({
       cmsForm.title,
       cmsForm.emailSubject,
       cmsForm.selectedChannels,
+      socialChannels.length,
+      selectedSocialChannelIds,
       pc,
     ]
   );
@@ -386,22 +457,24 @@ export function CreatePublicationComposer({
           metadata.emailSubject = cmsForm.emailSubject;
           if (selectedTemplateId) metadata.templateId = selectedTemplateId;
         }
-        if (selectedType === 'announcement') metadata.urgency = cmsForm.urgency;
+        if (selectedType === 'announcement') {
+          metadata.urgency = cmsForm.urgency;
+          if (cmsForm.category) metadata.category = cmsForm.category;
+        }
         if (selectedType === 'article') metadata.category = cmsForm.category;
       }
 
       return {
         type: selectedType,
         title: isCmsType(selectedType) ? cmsForm.title : profileName,
-        body:
-          selectedType === 'newsletter'
-            ? JSON.stringify(templateSections)
-            : isCmsType(selectedType)
-              ? cmsForm.body
-              : socialText,
+        body: usesSections(selectedType)
+          ? JSON.stringify(templateSections)
+          : isCmsType(selectedType)
+            ? cmsForm.body
+            : socialText,
         authorId: cmsForm.authorId,
         tags: cmsForm.tags,
-        channels: cmsForm.selectedChannels,
+        channels: selectedType === 'social' ? selectedSocialChannelIds : cmsForm.selectedChannels,
         scheduledAt,
         metadata,
       };
@@ -544,6 +617,9 @@ export function CreatePublicationComposer({
               <SocialEditorPanel
                 text={socialText}
                 onTextChange={setSocialText}
+                channels={socialChannels}
+                selectedChannelIds={selectedSocialChannelIds}
+                onToggleChannel={handleToggleSocialChannel}
               />
             ) : (
               <>
@@ -609,8 +685,60 @@ export function CreatePublicationComposer({
                   </div>
                   </>
                 )}
+                {(selectedType === 'article' || selectedType === 'announcement') && !isEditMode && (
+                  <div className="mb-5 grid grid-cols-1 items-start gap-4 sm:grid-cols-2">
+                    <div className="rounded-xl border border-dashed border-[#E8ECEF] bg-linear-to-b from-[#FAFBFC] to-white p-4 shadow-[0_1px_2px_rgba(29,20,31,0.04)]">
+                      <p className="mb-3 text-sm font-semibold tracking-tight text-[#1D141F]">
+                        {selectedType === 'article'
+                          ? pc.templateLabelArticle ??
+                            (locale === 'fr' ? "Modèle d'article" : 'Article template')
+                          : pc.templateLabelCommunication ??
+                            (locale === 'fr'
+                              ? 'Modèle de communication'
+                              : 'Communication template')}
+                      </p>
+                      <ContentTemplatePicker
+                        tenantId={activeTenantId ?? undefined}
+                        type={selectedType}
+                        selectedId={selectedTemplateId}
+                        onSelect={(template: ContentTemplate | null, placeholders: TemplatePlaceholders) => {
+                          setSelectedTemplateId(template?.id ?? null);
+                          setTemplatePlaceholders(placeholders);
+                          if (template) {
+                            try {
+                              const parsed = JSON.parse(template.body) as NewsletterSection[];
+                              setTemplateSections(Array.isArray(parsed) ? parsed : []);
+                            } catch {
+                              setTemplateSections([]);
+                            }
+                          } else {
+                            // Désélection : retour aux sections par défaut du type.
+                            setTemplateSections(emptySectionsByType()[selectedType]);
+                          }
+                        }}
+                        onOpenChange={setTemplatePickerOpen}
+                      />
+                    </div>
+                  </div>
+                )}
                 {selectedType === 'newsletter' && <NewsletterComposerSectionBreak />}
-                {selectedType === 'newsletter' ? (
+                {selectedType === 'article' && (
+                  <NewsletterComposerSectionBreak
+                    illustrationId="city-editorial-desk"
+                    stepLabel={pc.articleContentStep}
+                    title={pc.articleContentTitle}
+                    hint={pc.articleContentHint}
+                  />
+                )}
+                {selectedType === 'announcement' && (
+                  <NewsletterComposerSectionBreak
+                    illustrationId="audience-wave"
+                    stepLabel={pc.communicationContentStep}
+                    title={pc.communicationContentTitle}
+                    hint={pc.communicationContentHint}
+                  />
+                )}
+                {usesSections(selectedType) ? (
                   <div className="mb-1 rounded-2xl border border-[#E8ECEF] bg-linear-to-b from-white to-[#FAFBFC] p-4 shadow-[0_1px_2px_rgba(29,20,31,0.04)] sm:p-5">
                     <CmsEditorFields
                       type={selectedType}
@@ -657,13 +785,13 @@ export function CreatePublicationComposer({
 
         <PreviewPanels
           type={selectedType}
-          profileName={profileName}
+          profileName={selectedType === 'social' ? socialProfileName : profileName}
           socialText={socialText}
           cmsForm={cmsForm}
           scheduledAt={scheduledAt}
           previewMode={previewMode}
           onPreviewModeChange={setPreviewMode}
-          templateSections={selectedType === 'newsletter' ? templateSections : undefined}
+          templateSections={usesSections(selectedType) ? templateSections : undefined}
         />
       </div>
       )}

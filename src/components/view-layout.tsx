@@ -107,7 +107,16 @@ export function ViewSubNav<T extends string>({
 }) {
   return (
     <div className={cn('flex items-end justify-between gap-4 border-b border-border/60', className)}>
-      <nav className="flex items-end gap-0 overflow-x-auto scrollbar-none -mb-px">
+      <nav
+        className={cn(
+          'flex items-end gap-0 overflow-x-auto -mb-px',
+          '[scrollbar-width:none] hover:[scrollbar-width:thin]',
+          '[&::-webkit-scrollbar]:h-0 hover:[&::-webkit-scrollbar]:h-1',
+          '[&::-webkit-scrollbar-track]:bg-transparent',
+          '[&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-transparent',
+          'hover:[&::-webkit-scrollbar-thumb]:bg-border/70'
+        )}
+      >
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -154,15 +163,17 @@ export function ViewToolbar({
   return (
     <div
       className={cn(
-        'flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between',
+        'flex flex-row flex-nowrap items-center justify-between gap-3',
         className
       )}
     >
       {children != null && (
-        <div className="flex flex-1 flex-wrap items-center gap-2">{children}</div>
+        <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-2 overflow-x-auto">
+          {children}
+        </div>
       )}
       {actions != null && (
-        <div className="flex shrink-0 items-center gap-2 self-end xl:self-auto">{actions}</div>
+        <div className="flex shrink-0 items-center gap-2">{actions}</div>
       )}
     </div>
   );

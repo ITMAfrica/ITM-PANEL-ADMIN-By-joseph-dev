@@ -2359,3 +2359,32 @@ Stage Summary:
 - **Frontend-backend integration verified from browser**: API calls succeed, data displays correctly
 - **0 lint errors, 0 compilation errors, 0 runtime errors**
 - **E2E testing via agent-browser confirms**: Login works, dashboard renders, sidebar navigation works, API calls from browser succeed
+
+---
+Task ID: 16
+Agent: main
+Task: Approche newsletter (modèles + éditeur de sections + aperçu) étendue aux articles et communications ; renommage "Annonce" → "Communication"
+
+Work Log:
+- Backend : réutilisation du modèle Prisma ContentTemplate existant (type 'article' | 'announcement', body = sections JSON) — aucun nouveau modèle
+- server/controllers/templates.controller.ts : la liste GET /api/templates renvoie désormais body (sections JSON)
+- Nouveau server/lib/content-templates-data.ts : 6 seeds (3 articles : blog standard, guide/tutoriel, interview ; 3 communications : générale, maintenance & IT, événement d'entreprise)
+- prisma/seed.ts : boucle d'upsert des ContentTemplate (ids stables ct_<name>) — seed exécuté, 6 modèles vérifiés en base avec sections valides
+- Nouveau server/lib/excerpt.ts : deriveExcerpt partagé (remplace les 2 copies de content.service.ts et mappers/content.mapper.ts), extrait le texte des sections JSON au lieu de renvoyer du JSON brut (corrige aussi les excerpts newsletter) ; fix accessoire : groupe de capture manquant dans le nettoyage des liens markdown ('$1' littéral)
+- Frontend : ContentTemplate.body ajouté au type (src/lib/types.ts)
+- Nouveau src/components/publication-composer/content-template-picker.tsx : sélecteur de modèle article/communication calqué sur NewsletterTemplatePicker
+- Composer (index.tsx) : sections par type (sectionsByType comme cmsFormsByType), pickers + section break + NewsletterSectionsEditor pour article et announcement, body = JSON.stringify(sections) pour les 3 types, rétro-compat : ancien body texte converti en section "article" en édition
+- preview-panels.tsx : ArticlePreview et AnnouncementPreview rendent NewsletterSectionsPreview quand des sections existent
+- newsletter-composer-section-break.tsx : généralisé via props (illustration, titre, hint) — article : city-editorial-desk, communication : audience-wave
+- content-detail-drawer.tsx : rendu blocs pour les 3 types (isSectionsBody), libellé type renommé
+- Renommage affichage "Annonce" → "Communication" (enum DB 'announcement' conservé) : i18n fr.ts + en.ts (nav, dashboard, vue, templates, createContent, publicationComposer, insights) + libellés en dur (audit-view, reports-analytics-panels)
+- Nouvelles clés i18n FR+EN : templateLabelArticle, templateLabelCommunication, articleContentStep/Title/Hint, communicationContentStep/Title/Hint
+- Tests : nouveau server/tests/excerpt.test.ts (9 cas) — 127/127 tests passent
+- ESLint : 0 erreur sur les fichiers touchés (1 erreur préexistante dans content-detail-drawer.tsx, identique sur HEAD)
+- tsc --noEmit : aucune erreur dans les fichiers modifiés/créés
+
+Stage Summary:
+- Articles et communications bénéficient de la même approche que la newsletter : modèle pré-rempli, éditeur de blocs (hero, bandeau, texte, CTA, calendrier, footer) et aperçu live
+- 6 nouveaux modèles disponibles dans le compositeur et la page Modèles (onglets Article/Communication)
+- L'appellation "Annonce" est remplacée par "Communication" partout dans l'UI (FR+EN), sans migration de données
+- npm run build reste bloqué par azure-functions (deps @azure/functions non installées à la racine) — échec préexistant, non lié à ces changements
